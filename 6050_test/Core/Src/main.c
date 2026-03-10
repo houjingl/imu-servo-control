@@ -18,10 +18,16 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include "mpu6050.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include <string.h>
+#include <stdio.h>
+#include "mpu6050.h"
+#include <math.h>
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
 
 /* USER CODE END Includes */
 
@@ -43,6 +49,8 @@
 /* Private variables ---------------------------------------------------------*/
 I2C_HandleTypeDef hi2c2;
 
+TIM_HandleTypeDef htim1;
+
 UART_HandleTypeDef huart3;
 
 PCD_HandleTypeDef hpcd_USB_OTG_FS;
@@ -57,6 +65,7 @@ static void MX_GPIO_Init(void);
 static void MX_USART3_UART_Init(void);
 static void MX_USB_OTG_FS_PCD_Init(void);
 static void MX_I2C2_Init(void);
+static void MX_TIM1_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -73,6 +82,18 @@ int16_t gyro_data[3];
 float accel_g[3];
 float gyro_dps[3];
 uint8_t msg[100];
+
+uint16_t cur_time = 0;
+uint16_t last_tick = 0;
+float dt;
+#define TIMER_SCALE 				1000000.0f
+#define __CALC_DT(_CUR_TIME_)	 	(float)_CUR_TIME_ / TIMER_SCALE
+
+IMU_Angles_t imu_angles = {
+		0.0f, //roll
+		0.0f, //pitch
+		0.0f //yaw
+};
 /* USER CODE END 0 */
 
 /**
@@ -107,6 +128,7 @@ int main(void)
   MX_USART3_UART_Init();
   MX_USB_OTG_FS_PCD_Init();
   MX_I2C2_Init();
+  MX_TIM1_Init();
   /* USER CODE BEGIN 2 */
 
   if(mpu6050_init(&hi2c2, MPU6050_ACCEL_RANGE_2G, MPU6050_GYRO_RANGE_250) != HAL_OK){
@@ -119,25 +141,33 @@ int main(void)
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
 
-  mpu6050_getAccelValue(&hi2c2, accel_data);
-  mpu6050_getGyroValue(&hi2c2, gyro_data);
+//  mpu6050_getAccelValue(&hi2c2, accel_data);
+//  mpu6050_getGyroValue(&hi2c2, gyro_data);
    // dps = degrees per second
+  HAL_TIM_Base_Start(&htim1);
+
+
+
+
   while (1)
   {
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
 //	  HAL_Delay(1500);
-	  if (imu_flag >= 200){
-		  sprintf(msg, "Accel raw: x(%d), y(%d), z(%d)\r\n", accel_data[0], accel_data[1], accel_data[2]);
-		  print_msg(msg);
-		  sprintf(msg, "Gyro raw: x(%d), y(%d), z(%d)\r\n", gyro_data[0], gyro_data[1], gyro_data[2]);
-		  print_msg(msg);
+	  if (imu_flag){
+		  mpu6050_calculate_angles(&imu_angles, accel_g, gyro_dps, __CALC_DT(cur_time));
+		  imu_flag = 0;
+	  }
+
+	  if (HAL_GetTick() - last_tick >= 1000){
 		  sprintf(msg, "Accel: x(%f), y(%f), z(%f)\r\n", accel_g[0], accel_g[1], accel_g[2]);
 		  print_msg(msg);
 		  sprintf(msg, "Gyro: x(%f), y(%f), z(%f)\r\n", gyro_dps[0], gyro_dps[1], gyro_dps[2]);
 		  print_msg(msg);
-		  imu_flag = 0;
+		  sprintf(msg, "Angle: row(%f), pitch(%f), yaw(%f)\r\n", imu_angles.roll, imu_angles.pitch, imu_angles.yaw);
+		  print_msg(msg);
+		  last_tick = HAL_GetTick();
 	  }
 
 
@@ -224,6 +254,52 @@ static void MX_I2C2_Init(void)
   /* USER CODE BEGIN I2C2_Init 2 */
 
   /* USER CODE END I2C2_Init 2 */
+
+}
+
+/**
+  * @brief TIM1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM1_Init(void)
+{
+
+  /* USER CODE BEGIN TIM1_Init 0 */
+
+  /* USER CODE END TIM1_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM1_Init 1 */
+
+  /* USER CODE END TIM1_Init 1 */
+  htim1.Instance = TIM1;
+  htim1.Init.Prescaler = 84-1;
+  htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim1.Init.Period = 65535;
+  htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim1.Init.RepetitionCounter = 0;
+  htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim1, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim1, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM1_Init 2 */
+
+  /* USER CODE END TIM1_Init 2 */
 
 }
 

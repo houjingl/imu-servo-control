@@ -129,4 +129,16 @@ void mpu6050_toFloat(float* accel, float* gyro, int16_t* accel_raw, int16_t* gyr
     gyro[2] = gyro_raw[2] / GYRO_SCALE_FACTOR;
 }
 
+void mpu6050_calculate_angles(IMU_Angles_t *angles, float accel_g[3], float gyro_dps[3], float dt)
+{
+
+    float accel_roll  = atan2f(accel_g[1], accel_g[2]) * (180.0f / M_PI);
+    float accel_pitch = atan2f(-accel_g[0], sqrtf(accel_g[1]*accel_g[1] + accel_g[2]*accel_g[2])) * (180.0f / M_PI);
+
+    angles->roll  = 0.98f * (angles->roll  + (gyro_dps[0] * dt)) + (0.02f * accel_roll);
+    angles->pitch = 0.98f * (angles->pitch + (gyro_dps[1] * dt)) + (0.02f * accel_pitch);
+
+    angles->yaw = angles->yaw + (gyro_dps[2] * dt);
+}
+
 

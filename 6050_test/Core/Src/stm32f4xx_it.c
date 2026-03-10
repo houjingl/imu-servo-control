@@ -19,11 +19,11 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include "mpu6050.h"
 #include "stm32f4xx_it.h"
-
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+
+#include "mpu6050.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -207,16 +207,21 @@ void EXTI9_5_IRQHandler(void)
 {
   /* USER CODE BEGIN EXTI9_5_IRQn 0 */
 	if (__HAL_GPIO_EXTI_GET_FLAG(imu_exti_pin_Pin)){
-		imu_flag ++;
+		cur_time = __HAL_TIM_GET_COUNTER(&htim1);
+		HAL_TIM_Base_Stop(&htim1);
+		__HAL_TIM_SET_COUNTER(&htim1, 0);
+		imu_flag = 1;
 		mpu6050_getAccelValue(&hi2c2, accel_data);
 		mpu6050_getGyroValue(&hi2c2, gyro_data);
 		mpu6050_toFloat(accel_g, gyro_dps, accel_data, gyro_data);
-
+		if(imu_flag) HAL_TIM_Base_Start(&htim1);
 	}
 
   /* USER CODE END EXTI9_5_IRQn 0 */
   HAL_GPIO_EXTI_IRQHandler(imu_exti_pin_Pin);
   /* USER CODE BEGIN EXTI9_5_IRQn 1 */
+
+
 
   /* USER CODE END EXTI9_5_IRQn 1 */
 }
