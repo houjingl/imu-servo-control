@@ -1,0 +1,4 @@
+../Core/Src/madgwick.c:8:14:invSqrt	1
+../Core/Src/madgwick.c:18:6:Madgwick_Init	1
+../Core/Src/madgwick.c:26:6:Madgwick_Update	4
+../Core/Src/madgwick.c:101:6:Madgwick_ComputeAngles	1

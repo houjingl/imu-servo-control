@@ -25,6 +25,7 @@
 #include <stdio.h>
 #include "mpu6050.h"
 #include <math.h>
+#include "madgwick.h"
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
@@ -89,11 +90,13 @@ float dt;
 #define TIMER_SCALE 				1000000.0f
 #define __CALC_DT(_CUR_TIME_)	 	(float)_CUR_TIME_ / TIMER_SCALE
 
-IMU_Angles_t imu_angles = {
-		0.0f, //roll
-		0.0f, //pitch
-		0.0f //yaw
-};
+//IMU_Angles_t imu_angles = {
+//		0.0f, //roll
+//		0.0f, //pitch
+//		0.0f //yaw
+//};
+
+EulerAngles_t imu_angles;
 /* USER CODE END 0 */
 
 /**
@@ -156,7 +159,10 @@ int main(void)
     /* USER CODE BEGIN 3 */
 //	  HAL_Delay(1500);
 	  if (imu_flag){
-		  mpu6050_calculate_angles(&imu_angles, accel_g, gyro_dps, __CALC_DT(cur_time));
+//		  mpu6050_calculate_angles(&imu_angles, accel_g, gyro_dps, __CALC_DT(cur_time));
+		  Madgwick_Update(gyro_dps[0], gyro_dps[1], gyro_dps[2],
+		                      accel_g[0],  accel_g[1],  accel_g[2],  __CALC_DT(cur_time));
+		  Madgwick_ComputeAngles(&imu_angles);
 		  imu_flag = 0;
 	  }
 
