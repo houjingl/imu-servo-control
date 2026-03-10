@@ -1,0 +1,6 @@
+../Core/Src/mpu6050.c:10:19:mpu6050_read_reg	40	static
+../Core/Src/mpu6050.c:19:19:mpu6050_write_reg	32	static
+../Core/Src/mpu6050.c:33:19:mpu6050_init	128	static
+../Core/Src/mpu6050.c:101:6:mpu6050_getAccelValue	24	static
+../Core/Src/mpu6050.c:110:6:mpu6050_getGyroValue	24	static
+../Core/Src/mpu6050.c:119:6:mpu6050_toFloat	24	static
