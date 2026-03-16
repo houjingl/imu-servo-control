@@ -1,0 +1,3 @@
+../Core/Src/sg90.c:13:19:sg90_set_angle	18
+../Core/Src/sg90.c:38:19:sg90_init	3
+../Core/Src/sg90.c:56:6:sg90_sweep_test	5
