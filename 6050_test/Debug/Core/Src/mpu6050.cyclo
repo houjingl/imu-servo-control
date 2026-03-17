@@ -1,7 +1,7 @@
-../Core/Src/mpu6050.c:10:19:mpu6050_read_reg	2
-../Core/Src/mpu6050.c:19:19:mpu6050_write_reg	2
-../Core/Src/mpu6050.c:33:19:mpu6050_init	9
-../Core/Src/mpu6050.c:101:6:mpu6050_getAccelValue	1
-../Core/Src/mpu6050.c:110:6:mpu6050_getGyroValue	1
-../Core/Src/mpu6050.c:119:6:mpu6050_toFloat	1
-../Core/Src/mpu6050.c:132:6:mpu6050_calculate_angles	1
+../Core/Src/mpu6050.c:12:19:mpu6050_read_reg	2
+../Core/Src/mpu6050.c:21:19:mpu6050_write_reg	2
+../Core/Src/mpu6050.c:35:19:mpu6050_init	9
+../Core/Src/mpu6050.c:103:6:mpu6050_getAccelValue	1
+../Core/Src/mpu6050.c:112:6:mpu6050_getGyroValue	1
+../Core/Src/mpu6050.c:121:6:mpu6050_toFloat	1
+../Core/Src/mpu6050.c:134:6:mpu6050_calculate_angles	1

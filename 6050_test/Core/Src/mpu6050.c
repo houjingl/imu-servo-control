@@ -7,6 +7,8 @@
 
 #include "mpu6050.h"
 
+IMU_Angles_t imu_angles;
+
 HAL_StatusTypeDef mpu6050_read_reg(I2C_HandleTypeDef* hi2c, uint8_t reg_addr, uint16_t data_size, uint8_t* data_buf)
 {
 	if (HAL_I2C_Mem_Read(hi2c, MPU6050_DEVICE_ADDRESS, reg_addr, 1, data_buf, data_size, TIMEOUT) != HAL_OK){

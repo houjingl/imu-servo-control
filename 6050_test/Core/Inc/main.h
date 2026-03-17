@@ -31,6 +31,7 @@ extern "C" {
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "mpu6050.h"
 
 /* USER CODE END Includes */
 
@@ -43,11 +44,15 @@ extern int16_t gyro_data[3];
 extern float accel_g[3];
 extern float gyro_dps[3];
 extern I2C_HandleTypeDef hi2c2;
-extern float ACCEL_SCALE_FACTOR;
-extern float GYRO_SCALE_FACTOR;
 extern TIM_HandleTypeDef htim1;
 extern uint16_t cur_time;
 extern uint16_t last_time;
+
+extern uint16_t counts;
+extern char buffer[100];
+
+extern uint16_t SSD1306_CurrentX;
+extern uint16_t SSD1306_CurrentY;
 
 /* USER CODE END ET */
 
@@ -60,6 +65,8 @@ extern uint16_t last_time;
 /* USER CODE BEGIN EM */
 
 /* USER CODE END EM */
+
+void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
 
 /* Exported functions prototypes ---------------------------------------------*/
 void Error_Handler(void);
@@ -82,8 +89,6 @@ void Error_Handler(void);
 #define STLK_RX_GPIO_Port GPIOD
 #define STLK_TX_Pin GPIO_PIN_9
 #define STLK_TX_GPIO_Port GPIOD
-#define USB_PowerSwitchOn_Pin GPIO_PIN_6
-#define USB_PowerSwitchOn_GPIO_Port GPIOG
 #define USB_OverCurrent_Pin GPIO_PIN_7
 #define USB_OverCurrent_GPIO_Port GPIOG
 #define imu_exti_pin_Pin GPIO_PIN_9
