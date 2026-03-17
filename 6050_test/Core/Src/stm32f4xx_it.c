@@ -24,6 +24,7 @@
 /* USER CODE BEGIN Includes */
 
 #include "mpu6050.h"
+#include "ssd1306.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -215,6 +216,24 @@ void EXTI9_5_IRQHandler(void)
 		mpu6050_getGyroValue(&hi2c2, gyro_data);
 		mpu6050_toFloat(accel_g, gyro_dps, accel_data, gyro_data);
 		if(imu_flag) HAL_TIM_Base_Start(&htim1);
+		counts ++;
+		if (counts >= 17){
+			SSD1306_CurrentX=0;
+			  SSD1306_CurrentY=0;
+			  //char buffer[100];
+			  sprintf(buffer, " Roll: %.3f", imu_angles.roll);//Y angle: %.2f\nZ angle: %.2f
+			  SSD1306_Puts(buffer, &Font_7x10);
+			  SSD1306_CurrentX=0;
+			  SSD1306_CurrentY=20;
+			  sprintf(buffer, " Pitch: %.3f",  imu_angles.pitch);
+			  SSD1306_Puts(buffer, &Font_7x10);
+			  SSD1306_CurrentX=0;
+			  SSD1306_CurrentY=40;
+			  sprintf(buffer, " Yaw: %.3f",  imu_angles.yaw);
+			  SSD1306_Puts(buffer, &Font_7x10);
+
+			  SSD1306_UpdateScreen();
+		}
 	}
 
   /* USER CODE END EXTI9_5_IRQn 0 */

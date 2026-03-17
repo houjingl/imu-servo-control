@@ -74,6 +74,8 @@ typedef struct {
     float yaw; //around Z
 } IMU_Angles_t;
 
+extern IMU_Angles_t imu_angles;
+
 HAL_StatusTypeDef mpu6050_read_reg(I2C_HandleTypeDef* hi2c, uint8_t reg_addr, uint16_t data_size, uint8_t* data_buf);
 HAL_StatusTypeDef mpu6050_write_reg(I2C_HandleTypeDef* hi2c, uint8_t reg_addr, uint8_t value);
 HAL_StatusTypeDef mpu6050_init(I2C_HandleTypeDef* hi2c, uint8_t AFS_SEL, uint8_t FS_SEL);

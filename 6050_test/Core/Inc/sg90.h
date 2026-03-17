@@ -31,12 +31,14 @@
 
 #define PWM_RANGE		PWM_MAX - PWM_MIN
 
-#define MOTOR_COUNT		3
+#define MOTOR_COUNT		4
 
 typedef struct {
 	int32_t angle;
 	uint32_t tim_channel;
 } motor_t;
+
+extern motor_t motors[MOTOR_COUNT];
 
 HAL_StatusTypeDef sg90_set_angle(TIM_HandleTypeDef* htim, const motor_t* motor);
 HAL_StatusTypeDef sg90_init (TIM_HandleTypeDef* htim);
