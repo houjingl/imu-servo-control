@@ -10,6 +10,12 @@
 #include <string.h>
 #include <stdio.h>
 #include "main.h"
+#include <math.h>
+
+#ifndef M_PI
+#define M_PI 3.14159265358979323846f
+#endif
+
 
 #define TIMEOUT                   1000
 #define MPU6050_DEVICE_ADDRESS    0xD0
@@ -62,12 +68,19 @@ typedef struct{
 	uint8_t XG_ST:1;
 }GyroConfigRegister_t;
 
+typedef struct {
+    float roll;	//around X
+    float pitch; //around Y
+    float yaw; //around Z
+} IMU_Angles_t;
+
 HAL_StatusTypeDef mpu6050_read_reg(I2C_HandleTypeDef* hi2c, uint8_t reg_addr, uint16_t data_size, uint8_t* data_buf);
 HAL_StatusTypeDef mpu6050_write_reg(I2C_HandleTypeDef* hi2c, uint8_t reg_addr, uint8_t value);
 HAL_StatusTypeDef mpu6050_init(I2C_HandleTypeDef* hi2c, uint8_t AFS_SEL, uint8_t FS_SEL);
 void mpu6050_getAccelValue(I2C_HandleTypeDef *hi2cx, int16_t *accelData);
 void mpu6050_getGyroValue(I2C_HandleTypeDef *hi2cx, int16_t *gyroData);
 void mpu6050_toFloat(float* accel, float* gyro, int16_t* accel_raw, int16_t* gyro_raw);
+void mpu6050_calculate_angles(IMU_Angles_t *angles, float accel_g[3], float gyro_dps[3], float dt) ;
 
 
 

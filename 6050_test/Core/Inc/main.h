@@ -45,6 +45,9 @@ extern float gyro_dps[3];
 extern I2C_HandleTypeDef hi2c2;
 extern float ACCEL_SCALE_FACTOR;
 extern float GYRO_SCALE_FACTOR;
+extern TIM_HandleTypeDef htim1;
+extern uint16_t cur_time;
+extern uint16_t last_time;
 
 /* USER CODE END ET */
 
