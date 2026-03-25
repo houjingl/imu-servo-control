@@ -25,6 +25,7 @@
 
 #include "mpu6050.h"
 #include "ssd1306.h"
+#include "sg90.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -202,10 +203,40 @@ void SysTick_Handler(void)
 /******************************************************************************/
 
 /**
+  * @brief This function handles EXTI line 4 interrupt.
+  */
+void EXTI4_IRQHandler(void)
+{
+  /* USER CODE BEGIN EXTI4_IRQn 0 */
+
+	if (__HAL_GPIO_EXTI_GET_IT(COL1_Pin) != RESET) {
+		pressed =1;
+		last = current_col;
+		current_col = 0;
+	}
+
+  /* USER CODE END EXTI4_IRQn 0 */
+  HAL_GPIO_EXTI_IRQHandler(COL1_Pin);
+  /* USER CODE BEGIN EXTI4_IRQn 1 */
+
+  /* USER CODE END EXTI4_IRQn 1 */
+}
+
+/**
   * @brief This function handles EXTI line[9:5] interrupts.
   */
 void EXTI9_5_IRQHandler(void)
 {
+	if (__HAL_GPIO_EXTI_GET_IT(COL2_Pin) != RESET) {
+				pressed =1;
+				last = current_col;
+				  current_col = 1;
+			  }
+	if (__HAL_GPIO_EXTI_GET_IT(COL3_Pin) != RESET) {
+		pressed =1;
+		last = current_col;
+		  current_col = 2;
+	}
   /* USER CODE BEGIN EXTI9_5_IRQn 0 */
 	if (__HAL_GPIO_EXTI_GET_FLAG(imu_exti_pin_Pin)){
 		cur_time = __HAL_TIM_GET_COUNTER(&htim1);
@@ -216,6 +247,16 @@ void EXTI9_5_IRQHandler(void)
 		mpu6050_getGyroValue(&hi2c2, gyro_data);
 		mpu6050_toFloat(accel_g, gyro_dps, accel_data, gyro_data);
 		if(imu_flag) HAL_TIM_Base_Start(&htim1);
+		if (!motor_set_zero){
+			mpu6050_calculate_angles(&imu_angles, accel_g, gyro_dps, __CALC_DT(cur_time));
+			motors[0].angle = imu_angles.roll;
+			sg90_set_angle(&htim2, &motors[0]);
+			motors[1].angle = imu_angles.pitch;
+			sg90_set_angle(&htim2, &motors[1]);
+			motors[2].angle = imu_angles.yaw;
+			sg90_set_angle(&htim2, &motors[2]);
+		}
+
 		counts ++;
 		if (counts >= 17){
 			SSD1306_CurrentX=0;
@@ -234,9 +275,13 @@ void EXTI9_5_IRQHandler(void)
 
 			  SSD1306_UpdateScreen();
 		}
+
 	}
 
+
   /* USER CODE END EXTI9_5_IRQn 0 */
+  HAL_GPIO_EXTI_IRQHandler(COL2_Pin);
+  HAL_GPIO_EXTI_IRQHandler(COL3_Pin);
   HAL_GPIO_EXTI_IRQHandler(imu_exti_pin_Pin);
   /* USER CODE BEGIN EXTI9_5_IRQn 1 */
 

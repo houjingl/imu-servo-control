@@ -38,21 +38,32 @@ extern "C" {
 /* Exported types ------------------------------------------------------------*/
 /* USER CODE BEGIN ET */
 
-extern uint8_t imu_flag;
-extern int16_t accel_data[3];
-extern int16_t gyro_data[3];
+extern volatile uint8_t imu_flag;
+extern volatile int16_t accel_data[3];
+extern volatile int16_t gyro_data[3];
 extern float accel_g[3];
 extern float gyro_dps[3];
 extern I2C_HandleTypeDef hi2c2;
 extern TIM_HandleTypeDef htim1;
+extern TIM_HandleTypeDef htim2;
 extern uint16_t cur_time;
 extern uint16_t last_time;
+
+extern float gyro_yaw_zero_bias;
 
 extern uint16_t counts;
 extern char buffer[100];
 
 extern uint16_t SSD1306_CurrentX;
 extern uint16_t SSD1306_CurrentY;
+
+extern int8_t current_col;
+extern int8_t last;
+extern int8_t pressed;
+extern uint64_t disable;
+extern uint64_t disable_start;
+
+extern uint8_t motor_set_zero;
 
 /* USER CODE END ET */
 
@@ -76,6 +87,15 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
+#define COL1_Pin GPIO_PIN_4
+#define COL1_GPIO_Port GPIOE
+#define COL1_EXTI_IRQn EXTI4_IRQn
+#define COL2_Pin GPIO_PIN_5
+#define COL2_GPIO_Port GPIOE
+#define COL2_EXTI_IRQn EXTI9_5_IRQn
+#define COL3_Pin GPIO_PIN_6
+#define COL3_GPIO_Port GPIOE
+#define COL3_EXTI_IRQn EXTI9_5_IRQn
 #define USER_Btn_Pin GPIO_PIN_13
 #define USER_Btn_GPIO_Port GPIOC
 #define USER_Btn_EXTI_IRQn EXTI15_10_IRQn
@@ -108,11 +128,24 @@ void Error_Handler(void);
 #define TMS_GPIO_Port GPIOA
 #define TCK_Pin GPIO_PIN_14
 #define TCK_GPIO_Port GPIOA
+#define ROW4_Pin GPIO_PIN_4
+#define ROW4_GPIO_Port GPIOD
+#define ROW3_Pin GPIO_PIN_5
+#define ROW3_GPIO_Port GPIOD
+#define ROW2_Pin GPIO_PIN_6
+#define ROW2_GPIO_Port GPIOD
+#define ROW1_Pin GPIO_PIN_7
+#define ROW1_GPIO_Port GPIOD
 #define LD2_Pin GPIO_PIN_7
 #define LD2_GPIO_Port GPIOB
 
 /* USER CODE BEGIN Private defines */
 void print_msg(char * msg);
+#define ROW_Port GPIOD
+#define COL_Port GPIOE
+#define TIMER_SCALE 				1000000.0f
+#define __CALC_DT(_CUR_TIME_)	 	(float)_CUR_TIME_ / TIMER_SCALE
+
 
 /* USER CODE END Private defines */
 

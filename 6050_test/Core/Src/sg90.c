@@ -8,6 +8,7 @@
 #include "sg90.h"
 
 motor_t motors[MOTOR_COUNT];
+float motor_snapshot[3][MOTOR_COUNT];
 const uint32_t tim_channel_lut[4] = {TIM_CHANNEL_1,TIM_CHANNEL_2,TIM_CHANNEL_3,TIM_CHANNEL_4};
 
 HAL_StatusTypeDef sg90_set_angle(TIM_HandleTypeDef* htim, const motor_t* motor)
@@ -29,7 +30,7 @@ HAL_StatusTypeDef sg90_set_angle(TIM_HandleTypeDef* htim, const motor_t* motor)
 		return HAL_OK;
 	}
 
-	uint32_t digital = (uint32_t)((float)((float)(motor -> angle + 90) / 180.0) * PWM_RANGE) + PWM_MIN;
+	uint32_t digital = (uint32_t)((float)((float)(motor -> angle + 90.0) / 180.0) * PWM_RANGE) + PWM_MIN;
 	__HAL_TIM_SET_COMPARE(htim, motor -> tim_channel, digital);
 	return HAL_OK;
 
@@ -71,6 +72,19 @@ void sg90_sweep_test (TIM_HandleTypeDef* htim)
 		}
 		HAL_Delay(10);
 	}
+}
+
+void sg90_set_zero (TIM_HandleTypeDef* htim)
+{
+	for (int i = 0; i < MOTOR_COUNT; i ++){
+		motors[i].angle = 0;
+		sg90_set_angle(htim, &motors[i]);
+	}
+
+}
+
+void sg90_motor_play_back(TIM_HandleTypeDef* htim){
+
 }
 
 

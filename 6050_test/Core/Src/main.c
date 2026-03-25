@@ -83,9 +83,24 @@ void print_msg(char * msg) {
   HAL_UART_Transmit(&huart3, (uint8_t *)msg, strlen(msg), 100);
 }
 
-uint8_t imu_flag = 0;
-int16_t accel_data[3];
-int16_t gyro_data[3];
+int8_t current_row = -1, current_col = -1;
+int8_t last = -1;
+uint8_t it_flag[3] = {0};
+int8_t row;
+int8_t row_it;
+int8_t pressed;
+uint64_t disable;
+uint64_t disable_start;
+char keypad[4][3] = {
+   {'1','2','3'},
+   {'4','5','6'},
+   {'7','8','9'},
+   {'*','0','#'}
+};
+
+volatile uint8_t imu_flag = 0;
+volatile int16_t accel_data[3];
+volatile int16_t gyro_data[3];
 float accel_g[3];
 float gyro_dps[3];
 uint8_t msg[100];
@@ -93,8 +108,8 @@ uint8_t msg[100];
 uint16_t cur_time = 0;
 uint16_t last_tick = 0;
 float dt;
-#define TIMER_SCALE 				1000000.0f
-#define __CALC_DT(_CUR_TIME_)	 	(float)_CUR_TIME_ / TIMER_SCALE
+
+float gyro_yaw_zero_bias = 0;
 
 //IMU_Angles_t imu_angles = {
 //		0.0f, //roll
@@ -110,6 +125,26 @@ uint16_t SSD1306_CurrentY;
 float x,y,z;
 uint16_t counts;
 char buffer[100];
+
+uint8_t motor_set_zero = 0;
+uint8_t motor_play_back = 0;
+
+
+
+float mpu6050_get_zero_bias()
+{
+	uint16_t imu_cal_count = 0;
+	float gyro_yaw_zero_bias = 0;
+	while(imu_cal_count < 20){
+		if (imu_flag){
+			gyro_yaw_zero_bias += gyro_data[2];;
+			imu_cal_count ++;
+			imu_flag = 0;
+		}
+	}
+
+	return gyro_yaw_zero_bias / imu_cal_count;
+}
 
 /* USER CODE END 0 */
 
@@ -144,14 +179,14 @@ int main(void)
   MX_GPIO_Init();
   MX_USART3_UART_Init();
   MX_USB_OTG_FS_PCD_Init();
+  MX_I2C2_Init();
   MX_TIM1_Init();
   MX_TIM2_Init();
   MX_I2C1_Init();
-  MX_I2C2_Init();
   /* USER CODE BEGIN 2 */
 
   if(SSD1306_Init()!= HAL_OK) HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_SET);
-  HAL_Delay(1000);
+  HAL_Delay(300);
   print_msg("SSD init complete\r\n");
   SSD1306_Clear();
   SSD1306_Stopscroll();
@@ -163,13 +198,17 @@ int main(void)
 	sprintf(buffer, " X %.2f\n \n Y Angle: %.2f\n \n Z Angle: %.2f", x, y, z);//Y angle: %.2f\nZ angle: %.2f
 	SSD1306_Puts(buffer, &Font_7x10);
 	SSD1306_UpdateScreen();
-	HAL_Delay(1500);
+	HAL_Delay(300);
 	 SSD1306_Clear();
 
   if(mpu6050_init(&hi2c2, MPU6050_ACCEL_RANGE_2G, MPU6050_GYRO_RANGE_250) != HAL_OK){
 	  HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);
 	  while(1);
   }
+  HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_SET);
+//  gyro_yaw_zero_bias = mpu6050_get_zero_bias();
+  HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_RESET);
+
   if(sg90_init(&htim2) != HAL_OK) HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, GPIO_PIN_SET);
 
 //    sg90_sweep_test(&htim2);
@@ -185,34 +224,88 @@ int main(void)
 //    dps = degrees per second
   HAL_TIM_Base_Start(&htim1);
 
+  uint16_t r_pins [4] = {ROW1_Pin,ROW2_Pin,ROW3_Pin,ROW4_Pin};
+  uint16_t c_pins [3] = {COL1_Pin,COL2_Pin,COL3_Pin};
+  uint16_t  pin_stat [4][3] = {0};
+  HAL_GPIO_WritePin(ROW_Port, ROW1_Pin, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(ROW_Port, ROW2_Pin, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(ROW_Port, ROW3_Pin, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(ROW_Port, ROW4_Pin, GPIO_PIN_SET);
+    char message[100];
+
+
+
 
   while (1)
   {
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+
 //	  HAL_Delay(1500);
-	  if (imu_flag){
-		  mpu6050_calculate_angles(&imu_angles, accel_g, gyro_dps, __CALC_DT(cur_time));
-//		  Madgwick_Update(gyro_dps[0], gyro_dps[1], gyro_dps[2],
-//		                      accel_g[0],  accel_g[1],  accel_g[2],  __CALC_DT(cur_time));
-//		  Madgwick_ComputeAngles(&imu_angles);
-		  imu_flag = 0;
+//	  if (imu_flag){
+//		  mpu6050_calculate_angles(&imu_angles, accel_g, gyro_dps, __CALC_DT(cur_time));
+//		  motors[0].angle = imu_angles.roll;
+//		  sg90_set_angle(&htim2, &motors[0]);
+//		  motors[1].angle = imu_angles.pitch;
+//		  sg90_set_angle(&htim2, &motors[1]);
+//
+////		  Madgwick_Update(gyro_dps[0], gyro_dps[1], gyro_dps[2],
+////		                      accel_g[0],  accel_g[1],  accel_g[2],  __CALC_DT(cur_time));
+////		  Madgwick_ComputeAngles(&imu_angles);
+//		  imu_flag = 0;
+//	  }
+
+
+	  for (int i = 0; i <4 ; i+=1){
+		HAL_GPIO_WritePin(ROW_Port, ROW1_Pin, GPIO_PIN_RESET);
+		HAL_GPIO_WritePin(ROW_Port, ROW2_Pin, GPIO_PIN_RESET);
+		HAL_GPIO_WritePin(ROW_Port, ROW3_Pin, GPIO_PIN_RESET);
+		HAL_GPIO_WritePin(ROW_Port, ROW4_Pin, GPIO_PIN_RESET);
+		HAL_GPIO_WritePin(ROW_Port, r_pins[i], GPIO_PIN_SET);
+		HAL_Delay(5);
+		if( disable && (HAL_GetTick()  - disable_start > 200)){
+			disable = 0;
+			current_col = -1;;
+		}
+		if (current_col != -1 && !disable){
+			sprintf(message,"%c",keypad[i][current_col]);
+			print_msg(message);
+			if(keypad[i][current_col] == '#'){
+				motor_set_zero ^= 0x1;
+			}
+			if(keypad[i][current_col] == '1'){
+				for(int i = 0; i < MOTOR_COUNT; i ++){
+					motor_snapshot[0][i] = motors[i].angle;
+				}
+				HAL_GPIO_TogglePin(LD1_GPIO_Port, LD1_Pin);
+
+			}
+			if(keypad[i][current_col] == '2'){
+				for(int i = 0; i < MOTOR_COUNT; i ++){
+					motor_snapshot[1][i] = motors[i].angle;
+				}
+				HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+			}
+			if(keypad[i][current_col] == '3'){
+				for(int i = 0; i < MOTOR_COUNT; i ++){
+					motor_snapshot[2][i] = motors[i].angle;
+				}
+				HAL_GPIO_TogglePin(LD3_GPIO_Port, LD3_Pin);
+			}
+			if(keypad[i][current_col] == '*'){
+				motor_play_back ^= 0x1;
+			}
+			disable = 1;
+			disable_start = HAL_GetTick();
+		}
 	  }
-
-	  if (HAL_GetTick() - last_tick >= 1000){
-		  sprintf(msg, "Accel: x(%f), y(%f), z(%f)\r\n", accel_g[0], accel_g[1], accel_g[2]);
-		  print_msg(msg);
-		  sprintf(msg, "Gyro: x(%f), y(%f), z(%f)\r\n", gyro_dps[0], gyro_dps[1], gyro_dps[2]);
-		  print_msg(msg);
-		  sprintf(msg, "Angle: row(%f), pitch(%f), yaw(%f)\r\n", imu_angles.roll, imu_angles.pitch, imu_angles.yaw);
-		  print_msg(msg);
-		  last_tick = HAL_GetTick();
+	  if(motor_set_zero){
+		  sg90_set_zero(&htim2);
+	  }
+	  if(motor_play_back){
 
 	  }
-
-
-
 
   }
   /* USER CODE END 3 */
@@ -536,6 +629,7 @@ static void MX_GPIO_Init(void)
 /* USER CODE END MX_GPIO_Init_1 */
 
   /* GPIO Ports Clock Enable */
+  __HAL_RCC_GPIOE_CLK_ENABLE();
   __HAL_RCC_GPIOC_CLK_ENABLE();
   __HAL_RCC_GPIOF_CLK_ENABLE();
   __HAL_RCC_GPIOH_CLK_ENABLE();
@@ -549,6 +643,15 @@ static void MX_GPIO_Init(void)
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOG, GPIO_PIN_6, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOD, ROW4_Pin|ROW3_Pin|ROW2_Pin|ROW1_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pins : COL1_Pin COL2_Pin COL3_Pin */
+  GPIO_InitStruct.Pin = COL1_Pin|COL2_Pin|COL3_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
+  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+  HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
 
   /*Configure GPIO pins : USER_Btn_Pin imu_exti_pin_Pin */
   GPIO_InitStruct.Pin = USER_Btn_Pin|imu_exti_pin_Pin;
@@ -576,7 +679,17 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(USB_OverCurrent_GPIO_Port, &GPIO_InitStruct);
 
+  /*Configure GPIO pins : ROW4_Pin ROW3_Pin ROW2_Pin ROW1_Pin */
+  GPIO_InitStruct.Pin = ROW4_Pin|ROW3_Pin|ROW2_Pin|ROW1_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
+
   /* EXTI interrupt init*/
+  HAL_NVIC_SetPriority(EXTI4_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI4_IRQn);
+
   HAL_NVIC_SetPriority(EXTI9_5_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
 

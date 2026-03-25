@@ -4,4 +4,4 @@
 ../Core/Src/mpu6050.c:103:6:mpu6050_getAccelValue	24	static
 ../Core/Src/mpu6050.c:112:6:mpu6050_getGyroValue	24	static
 ../Core/Src/mpu6050.c:121:6:mpu6050_toFloat	24	static
-../Core/Src/mpu6050.c:134:6:mpu6050_calculate_angles	40	static
+../Core/Src/mpu6050.c:134:6:mpu6050_calculate_angles	48	static
