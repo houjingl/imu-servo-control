@@ -59,7 +59,7 @@
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
-
+extern DMA_HandleTypeDef hdma_adc1;
 /* USER CODE BEGIN EV */
 
 /* USER CODE END EV */
@@ -257,8 +257,8 @@ void EXTI9_5_IRQHandler(void)
 			sg90_set_angle(&htim2, &motors[0]);
 			motors[1].angle = imu_angles.pitch;
 			sg90_set_angle(&htim2, &motors[1]);
-			motors[2].angle = imu_angles.yaw;
-			sg90_set_angle(&htim2, &motors[2]);
+//			motors[2].angle = imu_angles.yaw;
+//			sg90_set_angle(&htim2, &motors[2]);
 		}
 
 		counts ++;
@@ -317,6 +317,20 @@ void EXTI15_10_IRQHandler(void)
   /* USER CODE BEGIN EXTI15_10_IRQn 1 */
 
   /* USER CODE END EXTI15_10_IRQn 1 */
+}
+
+/**
+  * @brief This function handles DMA2 stream0 global interrupt.
+  */
+void DMA2_Stream0_IRQHandler(void)
+{
+  /* USER CODE BEGIN DMA2_Stream0_IRQn 0 */
+
+  /* USER CODE END DMA2_Stream0_IRQn 0 */
+  HAL_DMA_IRQHandler(&hdma_adc1);
+  /* USER CODE BEGIN DMA2_Stream0_IRQn 1 */
+
+  /* USER CODE END DMA2_Stream0_IRQn 1 */
 }
 
 /* USER CODE BEGIN 1 */

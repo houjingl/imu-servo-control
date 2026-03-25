@@ -1,0 +1,21 @@
+#ifndef JOYSTICK_H
+#define JOYSTICK_H
+
+#include "main.h"
+#include "sg90.h"
+#include "step_motor.h"
+extern uint16_t* vx;
+extern uint16_t* vy;
+#define ADC_RANGE 4095
+#define JOYSTICK_CENTER   2048
+#define JOYSTICK_DEADZONE 150
+#define SERVO_SPEED_SCALE   0.01f
+#define STEPPER_SPEED_SCALE 0.05f
+
+HAL_StatusTypeDef adc_dma_init(ADC_HandleTypeDef* hadc);
+void joystick_control(uint8_t motor_set_zero_flag);
+
+
+
+
+#endif

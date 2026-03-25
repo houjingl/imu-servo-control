@@ -28,6 +28,8 @@
 #include "madgwick.h"
 #include "sg90.h"
 #include "ssd1306.h"
+#include "step_motor.h"
+#include "joystick.h"
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
@@ -51,6 +53,7 @@
 
 /* Private variables ---------------------------------------------------------*/
 ADC_HandleTypeDef hadc1;
+DMA_HandleTypeDef hdma_adc1;
 
 I2C_HandleTypeDef hi2c1;
 I2C_HandleTypeDef hi2c2;
@@ -69,6 +72,7 @@ PCD_HandleTypeDef hpcd_USB_OTG_FS;
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
+static void MX_DMA_Init(void);
 static void MX_USART3_UART_Init(void);
 static void MX_USB_OTG_FS_PCD_Init(void);
 static void MX_I2C2_Init(void);
@@ -132,8 +136,6 @@ char buffer[100];
 uint8_t motor_set_zero = 0;
 uint8_t motor_play_back = 0;
 
-
-
 float mpu6050_get_zero_bias()
 {
 	uint16_t imu_cal_count = 0;
@@ -147,6 +149,77 @@ float mpu6050_get_zero_bias()
 	}
 
 	return gyro_yaw_zero_bias / imu_cal_count;
+}
+
+//A Small FSM for the keypad
+uint8_t scan_state = 0; //0 -> gpio set pins 1 -> gpio check intr result
+uint8_t i = 0;
+uint32_t scan_tick = 0;
+uint16_t r_pins [4] = {ROW1_Pin,ROW2_Pin,ROW3_Pin,ROW4_Pin};
+uint16_t c_pins [3] = {COL1_Pin,COL2_Pin,COL3_Pin};
+uint16_t  pin_stat [4][3] = {0};
+void keypad_update(uint32_t global_tick) {
+
+    char message[2];
+
+    if (scan_state == 0) {
+        HAL_GPIO_WritePin(ROW_Port, ROW1_Pin, GPIO_PIN_RESET);
+        HAL_GPIO_WritePin(ROW_Port, ROW2_Pin, GPIO_PIN_RESET);
+        HAL_GPIO_WritePin(ROW_Port, ROW3_Pin, GPIO_PIN_RESET);
+        HAL_GPIO_WritePin(ROW_Port, ROW4_Pin, GPIO_PIN_RESET);
+        HAL_GPIO_WritePin(ROW_Port, r_pins[i], GPIO_PIN_SET);
+
+        scan_tick = global_tick;
+        scan_state = 1;
+    }
+    else if (scan_state == 1) {
+        if ((global_tick - scan_tick) >= 5) {
+
+            if (disable && (global_tick - disable_start > 200)) {
+                disable = 0;
+                current_col = -1;
+            }
+
+            if (current_col != -1 && !disable) {
+                sprintf(message, "%c", keypad[i][current_col]);
+                print_msg(message);
+
+                if (keypad[i][current_col] == '#') {
+                    motor_set_zero ^= 0x1;
+                }
+                if (keypad[i][current_col] == '1') {
+                    for(int j = 0; j < MOTOR_COUNT; j++) {
+                        motor_snapshot[0][j] = motors[j].angle;
+                    }
+                    HAL_GPIO_TogglePin(LD1_GPIO_Port, LD1_Pin);
+                }
+                if (keypad[i][current_col] == '2') {
+                    for(int j = 0; j < MOTOR_COUNT; j++) {
+                        motor_snapshot[1][j] = motors[j].angle;
+                    }
+                    HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+                }
+                if (keypad[i][current_col] == '3') {
+                    for(int j = 0; j < MOTOR_COUNT; j++) {
+                        motor_snapshot[2][j] = motors[j].angle;
+                    }
+                    HAL_GPIO_TogglePin(LD3_GPIO_Port, LD3_Pin);
+                }
+                if (keypad[i][current_col] == '*') {
+                    motor_play_back ^= 0x1;
+                }
+
+                disable = 1;
+                disable_start = global_tick;
+            }
+
+            i++;
+            if (i >= 4) {
+                i = 0;
+            }
+            scan_state = 0;
+        }
+    }
 }
 
 /* USER CODE END 0 */
@@ -180,6 +253,7 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_DMA_Init();
   MX_USART3_UART_Init();
   MX_USB_OTG_FS_PCD_Init();
   MX_I2C2_Init();
@@ -228,16 +302,13 @@ int main(void)
 //    dps = degrees per second
   HAL_TIM_Base_Start(&htim1);
 
-  uint16_t r_pins [4] = {ROW1_Pin,ROW2_Pin,ROW3_Pin,ROW4_Pin};
-  uint16_t c_pins [3] = {COL1_Pin,COL2_Pin,COL3_Pin};
-  uint16_t  pin_stat [4][3] = {0};
+
   HAL_GPIO_WritePin(ROW_Port, ROW1_Pin, GPIO_PIN_SET);
-	HAL_GPIO_WritePin(ROW_Port, ROW2_Pin, GPIO_PIN_SET);
-	HAL_GPIO_WritePin(ROW_Port, ROW3_Pin, GPIO_PIN_SET);
-	HAL_GPIO_WritePin(ROW_Port, ROW4_Pin, GPIO_PIN_SET);
-    char message[100];
-
-
+  HAL_GPIO_WritePin(ROW_Port, ROW2_Pin, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(ROW_Port, ROW3_Pin, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(ROW_Port, ROW4_Pin, GPIO_PIN_SET);
+//  char message[100];
+  uint32_t last_joystick_update_tick = HAL_GetTick();
 
 
   while (1)
@@ -259,57 +330,23 @@ int main(void)
 ////		  Madgwick_ComputeAngles(&imu_angles);
 //		  imu_flag = 0;
 //	  }
-
-
-	  for (int i = 0; i <4 ; i+=1){
-		HAL_GPIO_WritePin(ROW_Port, ROW1_Pin, GPIO_PIN_RESET);
-		HAL_GPIO_WritePin(ROW_Port, ROW2_Pin, GPIO_PIN_RESET);
-		HAL_GPIO_WritePin(ROW_Port, ROW3_Pin, GPIO_PIN_RESET);
-		HAL_GPIO_WritePin(ROW_Port, ROW4_Pin, GPIO_PIN_RESET);
-		HAL_GPIO_WritePin(ROW_Port, r_pins[i], GPIO_PIN_SET);
-		HAL_Delay(5);
-		if( disable && (HAL_GetTick()  - disable_start > 200)){
-			disable = 0;
-			current_col = -1;;
-		}
-		if (current_col != -1 && !disable){
-			sprintf(message,"%c",keypad[i][current_col]);
-			print_msg(message);
-			if(keypad[i][current_col] == '#'){
-				motor_set_zero ^= 0x1;
-			}
-			if(keypad[i][current_col] == '1'){
-				for(int i = 0; i < MOTOR_COUNT; i ++){
-					motor_snapshot[0][i] = motors[i].angle;
-				}
-				HAL_GPIO_TogglePin(LD1_GPIO_Port, LD1_Pin);
-
-			}
-			if(keypad[i][current_col] == '2'){
-				for(int i = 0; i < MOTOR_COUNT; i ++){
-					motor_snapshot[1][i] = motors[i].angle;
-				}
-				HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
-			}
-			if(keypad[i][current_col] == '3'){
-				for(int i = 0; i < MOTOR_COUNT; i ++){
-					motor_snapshot[2][i] = motors[i].angle;
-				}
-				HAL_GPIO_TogglePin(LD3_GPIO_Port, LD3_Pin);
-			}
-			if(keypad[i][current_col] == '*'){
-				motor_play_back ^= 0x1;
-			}
-			disable = 1;
-			disable_start = HAL_GetTick();
-		}
-	  }
 	  if(motor_set_zero){
 		  sg90_set_zero(&htim2);
 	  }
 	  if(motor_play_back){
 
 	  }
+
+	  Stepper_Update(HAL_GetTick());
+
+	  if((HAL_GetTick() - last_joystick_update_tick)>= 20){
+		  last_joystick_update_tick = HAL_GetTick();
+		  joystick_control(motor_set_zero || motor_play_back);
+	  }
+
+
+	  keypad_update(HAL_GetTick());
+
 
   }
   /* USER CODE END 3 */
@@ -384,13 +421,13 @@ static void MX_ADC1_Init(void)
   hadc1.Instance = ADC1;
   hadc1.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV4;
   hadc1.Init.Resolution = ADC_RESOLUTION_12B;
-  hadc1.Init.ScanConvMode = DISABLE;
-  hadc1.Init.ContinuousConvMode = DISABLE;
+  hadc1.Init.ScanConvMode = ENABLE;
+  hadc1.Init.ContinuousConvMode = ENABLE;
   hadc1.Init.DiscontinuousConvMode = DISABLE;
   hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
   hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START;
   hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
-  hadc1.Init.NbrOfConversion = 1;
+  hadc1.Init.NbrOfConversion = 2;
   hadc1.Init.DMAContinuousRequests = DISABLE;
   hadc1.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
   if (HAL_ADC_Init(&hadc1) != HAL_OK)
@@ -402,7 +439,16 @@ static void MX_ADC1_Init(void)
   */
   sConfig.Channel = ADC_CHANNEL_10;
   sConfig.Rank = 1;
-  sConfig.SamplingTime = ADC_SAMPLETIME_3CYCLES;
+  sConfig.SamplingTime = ADC_SAMPLETIME_84CYCLES;
+  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /** Configure for the selected ADC regular channel its corresponding rank in the sequencer and its sample time.
+  */
+  sConfig.Channel = ADC_CHANNEL_13;
+  sConfig.Rank = 2;
   if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
   {
     Error_Handler();
@@ -670,6 +716,22 @@ static void MX_USB_OTG_FS_PCD_Init(void)
   /* USER CODE BEGIN USB_OTG_FS_Init 2 */
 
   /* USER CODE END USB_OTG_FS_Init 2 */
+
+}
+
+/**
+  * Enable DMA controller clock
+  */
+static void MX_DMA_Init(void)
+{
+
+  /* DMA controller clock enable */
+  __HAL_RCC_DMA2_CLK_ENABLE();
+
+  /* DMA interrupt init */
+  /* DMA2_Stream0_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA2_Stream0_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA2_Stream0_IRQn);
 
 }
 
