@@ -23,10 +23,10 @@ void Stepper_SetPhase(int32_t step_index)
     int8_t phase = step_index % 8;
     if (phase < 0) phase += 8;
 
-    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, step_sequence[phase][0] ? GPIO_PIN_SET : GPIO_PIN_RESET);
-    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, step_sequence[phase][1] ? GPIO_PIN_SET : GPIO_PIN_RESET);
-    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2, step_sequence[phase][2] ? GPIO_PIN_SET : GPIO_PIN_RESET);
-    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3, step_sequence[phase][3] ? GPIO_PIN_SET : GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(STEP_PIN_0_GPIO_Port, STEP_PIN_0_Pin, step_sequence[phase][0] ? GPIO_PIN_SET : GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(STEP_PIN_1_GPIO_Port, STEP_PIN_1_Pin, step_sequence[phase][1] ? GPIO_PIN_SET : GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(STEP_PIN_2_GPIO_Port, STEP_PIN_2_Pin, step_sequence[phase][2] ? GPIO_PIN_SET : GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(STEP_PIN_3_GPIO_Port, STEP_PIN_3_Pin, step_sequence[phase][3] ? GPIO_PIN_SET : GPIO_PIN_RESET);
 }
 
 void Stepper_Update(uint32_t global_tick)
