@@ -99,8 +99,15 @@ void Error_Handler(void);
 #define USER_Btn_Pin GPIO_PIN_13
 #define USER_Btn_GPIO_Port GPIOC
 #define USER_Btn_EXTI_IRQn EXTI15_10_IRQn
+#define JOYSTICK_BTN_Pin GPIO_PIN_3
+#define JOYSTICK_BTN_GPIO_Port GPIOF
+#define JOYSTICK_BTN_EXTI_IRQn EXTI3_IRQn
 #define MCO_Pin GPIO_PIN_0
 #define MCO_GPIO_Port GPIOH
+#define VRX_Pin GPIO_PIN_0
+#define VRX_GPIO_Port GPIOC
+#define VRY_Pin GPIO_PIN_3
+#define VRY_GPIO_Port GPIOC
 #define LD1_Pin GPIO_PIN_0
 #define LD1_GPIO_Port GPIOB
 #define LD3_Pin GPIO_PIN_14

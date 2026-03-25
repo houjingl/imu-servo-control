@@ -203,6 +203,20 @@ void SysTick_Handler(void)
 /******************************************************************************/
 
 /**
+  * @brief This function handles EXTI line 3 interrupt.
+  */
+void EXTI3_IRQHandler(void)
+{
+  /* USER CODE BEGIN EXTI3_IRQn 0 */
+
+  /* USER CODE END EXTI3_IRQn 0 */
+  HAL_GPIO_EXTI_IRQHandler(JOYSTICK_BTN_Pin);
+  /* USER CODE BEGIN EXTI3_IRQn 1 */
+
+  /* USER CODE END EXTI3_IRQn 1 */
+}
+
+/**
   * @brief This function handles EXTI line 4 interrupt.
   */
 void EXTI4_IRQHandler(void)
@@ -227,16 +241,6 @@ void EXTI4_IRQHandler(void)
   */
 void EXTI9_5_IRQHandler(void)
 {
-	if (__HAL_GPIO_EXTI_GET_IT(COL2_Pin) != RESET) {
-				pressed =1;
-				last = current_col;
-				  current_col = 1;
-			  }
-	if (__HAL_GPIO_EXTI_GET_IT(COL3_Pin) != RESET) {
-		pressed =1;
-		last = current_col;
-		  current_col = 2;
-	}
   /* USER CODE BEGIN EXTI9_5_IRQn 0 */
 	if (__HAL_GPIO_EXTI_GET_FLAG(imu_exti_pin_Pin)){
 		cur_time = __HAL_TIM_GET_COUNTER(&htim1);
@@ -276,6 +280,17 @@ void EXTI9_5_IRQHandler(void)
 			  SSD1306_UpdateScreen();
 		}
 
+	}
+
+	if (__HAL_GPIO_EXTI_GET_IT(COL2_Pin) != RESET) {
+		pressed =1;
+		last = current_col;
+		  current_col = 1;
+	  }
+	if (__HAL_GPIO_EXTI_GET_IT(COL3_Pin) != RESET) {
+		pressed =1;
+		last = current_col;
+		  current_col = 2;
 	}
 
 
