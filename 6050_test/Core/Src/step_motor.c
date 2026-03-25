@@ -44,7 +44,10 @@ void Stepper_Update(uint32_t global_tick)
             Stepper_SetPhase(current_absolute_steps);
         }
     } else {
-        HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0 | GPIO_PIN_1 | GPIO_PIN_2 | GPIO_PIN_3, GPIO_PIN_RESET);
+    	HAL_GPIO_WritePin(STEP_PIN_0_GPIO_Port, STEP_PIN_0_Pin, GPIO_PIN_RESET);
+		HAL_GPIO_WritePin(STEP_PIN_1_GPIO_Port, STEP_PIN_1_Pin, GPIO_PIN_RESET);
+		HAL_GPIO_WritePin(STEP_PIN_2_GPIO_Port, STEP_PIN_2_Pin, GPIO_PIN_RESET);
+		HAL_GPIO_WritePin(STEP_PIN_3_GPIO_Port, STEP_PIN_3_Pin, GPIO_PIN_RESET);
     }
 }
 
