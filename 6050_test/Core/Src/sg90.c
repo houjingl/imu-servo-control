@@ -7,7 +7,11 @@
 
 #include "sg90.h"
 
-motor_t motors[MOTOR_COUNT];
+motor_t motors[MOTOR_COUNT]; //This is the array of motors controlled by the IMU
+
+motor_t* imu_motors[IMU_SERVO_MOTOR_COUNT];
+motor_t* joystick_motors[JOYSTICK_SERVO_MOTOR_COUNT];
+
 float motor_snapshot[3][MOTOR_COUNT];
 const uint32_t tim_channel_lut[4] = {TIM_CHANNEL_1,TIM_CHANNEL_2,TIM_CHANNEL_3,TIM_CHANNEL_4};
 
@@ -46,6 +50,16 @@ HAL_StatusTypeDef sg90_init (TIM_HandleTypeDef* htim)
 		if(sg90_set_angle(htim, &motors[i]) != HAL_OK) return HAL_ERROR;
 	}
 
+	//Assigning pointer addresses
+	for(int i = 0; i < IMU_SERVO_MOTOR_COUNT; i ++){
+		imu_motors[i] = &motors[i];
+	}
+
+	for(int i = 0; i < JOYSTICK_SERVO_MOTOR_COUNT; i ++){
+		joystick_motors[i] = &motors[IMU_SERVO_MOTOR_COUNT + i];
+	}
+
+	//Starting all channels
 	HAL_TIM_PWM_Start(htim, TIM_CHANNEL_1);
 	HAL_TIM_PWM_Start(htim, TIM_CHANNEL_2);
 	HAL_TIM_PWM_Start(htim, TIM_CHANNEL_3);

@@ -7,8 +7,6 @@
 
 #include "step_motor.h"
 
-
-
 int32_t current_absolute_steps = 0;
 int32_t target_absolute_steps = 0;
 uint32_t last_step_tick = 0;
@@ -51,18 +49,18 @@ void Stepper_Update(uint32_t global_tick)
     }
 }
 
-void Stepper_SetTargetAngle(float target_angle)
-{
-    target_absolute_steps = (int32_t)((target_angle / 360.0f) * STEPS_PER_REV);
-}
-
-void Stepper_MoveRelativeSteps(int32_t steps)
-{
-    target_absolute_steps += steps;
-}
-
-void Stepper_ResetZero(void)
-{
-    current_absolute_steps = 0;
-    target_absolute_steps = 0;
-}
+//void Stepper_SetTargetAngle(float target_angle)
+//{
+//    target_absolute_steps = (int32_t)((target_angle / 360.0f) * STEPS_PER_REV);
+//}
+//
+//void Stepper_MoveRelativeSteps(int32_t steps)
+//{
+//    target_absolute_steps += steps;
+//}
+//
+//void Stepper_ResetZero(void)
+//{
+//    current_absolute_steps = 0;
+//    target_absolute_steps = 0;
+//}

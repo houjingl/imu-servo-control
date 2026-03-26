@@ -283,11 +283,14 @@ int main(void)
 	  HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);
 	  while(1);
   }
-  HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_SET);
-//  gyro_yaw_zero_bias = mpu6050_get_zero_bias();
-  HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_RESET);
-
-  if(sg90_init(&htim2) != HAL_OK) HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, GPIO_PIN_SET);
+  if (adc_dma_init(&hadc1) != HAL_OK) {
+	  HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_SET);
+	  while(1);
+  }
+  if(sg90_init(&htim2) != HAL_OK) {
+	  HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, GPIO_PIN_SET);
+	  while(1);
+  }
 
 //    sg90_sweep_test(&htim2);
 
@@ -341,7 +344,7 @@ int main(void)
 
 	  if((HAL_GetTick() - last_joystick_update_tick)>= 20){
 		  last_joystick_update_tick = HAL_GetTick();
-		  joystick_control(motor_set_zero || motor_play_back);
+		  joystick_control(&htim2, motor_set_zero, joystick_motors[0]);
 	  }
 
 

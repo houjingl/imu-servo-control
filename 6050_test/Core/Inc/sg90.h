@@ -31,7 +31,11 @@
 
 #define PWM_RANGE		PWM_MAX - PWM_MIN
 
-#define MOTOR_COUNT		3
+#define MOTOR_COUNT		4
+
+#define JOYSTICK_SERVO_MOTOR_COUNT 	1
+#define IMU_SERVO_MOTOR_COUNT 2 //This is the number of motors controlled by the imu
+#define CLAW_SERVO_MOTOR_COUNT 1
 
 typedef struct {
 	float angle;
@@ -40,6 +44,9 @@ typedef struct {
 
 extern motor_t motors[MOTOR_COUNT];
 extern float motor_snapshot[3][MOTOR_COUNT];
+
+extern motor_t* imu_motors[IMU_SERVO_MOTOR_COUNT];
+extern motor_t* joystick_motors[JOYSTICK_SERVO_MOTOR_COUNT];
 
 HAL_StatusTypeDef sg90_set_angle(TIM_HandleTypeDef* htim, const motor_t* motor);
 HAL_StatusTypeDef sg90_init (TIM_HandleTypeDef* htim);
