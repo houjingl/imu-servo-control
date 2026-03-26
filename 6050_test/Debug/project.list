@@ -5272,7 +5272,7 @@ void Stepper_Update(uint32_t global_tick)
  8002aa6:	681b      	ldr	r3, [r3, #0]
  8002aa8:	687a      	ldr	r2, [r7, #4]
  8002aaa:	1ad3      	subs	r3, r2, r3
- 8002aac:	2b01      	cmp	r3, #1
+ 8002aac:	2b04      	cmp	r3, #4
  8002aae:	d931      	bls.n	8002b14 <Stepper_Update+0x84>
             last_step_tick = global_tick;
  8002ab0:	4a1c      	ldr	r2, [pc, #112]	@ (8002b24 <Stepper_Update+0x94>)

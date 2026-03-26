@@ -11,7 +11,7 @@
 
 
 #define STEPS_PER_REV 4076.0f
-#define STEP_DELAY_MS 2
+#define STEP_DELAY_MS 5
 
 #define STEP_MOTOR_COUNT 1
 
