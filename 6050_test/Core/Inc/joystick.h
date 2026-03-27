@@ -13,7 +13,7 @@ extern uint16_t* vy;
 #define JOYSTICK_DEADZONE 150
 #define SERVO_SPEED_SCALE   0.01f
 
-#define STEPPER_SPEED_DIVISOR 50
+#define STEPPER_SPEED_DIVISOR 100
 #define STEPPER_MAX_STEPS     905
 
 HAL_StatusTypeDef adc_dma_init(ADC_HandleTypeDef* hadc);

@@ -312,6 +312,8 @@ int main(void)
   HAL_GPIO_WritePin(ROW_Port, ROW4_Pin, GPIO_PIN_SET);
 //  char message[100];
   uint32_t last_joystick_update_tick = HAL_GetTick();
+  uint32_t display_adc = HAL_GetTick();
+  char message[100];
 
 
   while (1)
@@ -344,9 +346,16 @@ int main(void)
 
 	  if((HAL_GetTick() - last_joystick_update_tick)>= 20){
 		  last_joystick_update_tick = HAL_GetTick();
+		  adc_dma_init(&hadc1);
 		  joystick_control(&htim2, motor_set_zero, joystick_motors[0]);
 	  }
 
+	  if((HAL_GetTick() - display_adc) >= 500){
+		  display_adc = HAL_GetTick();
+		  sprintf(message, "vx (%d) vy(%d) \r\n",*vx, *vy);
+		                  print_msg(message);
+		  print_msg(message);
+	  }
 
 	  keypad_update(HAL_GetTick());
 
