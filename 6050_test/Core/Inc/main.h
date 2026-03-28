@@ -64,6 +64,7 @@ extern uint64_t disable;
 extern uint64_t disable_start;
 
 extern uint8_t motor_set_zero;
+extern uint8_t motor_play_back;
 
 /* USER CODE END ET */
 

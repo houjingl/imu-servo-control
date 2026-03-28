@@ -251,7 +251,7 @@ void EXTI9_5_IRQHandler(void)
 		mpu6050_getGyroValue(&hi2c2, gyro_data);
 		mpu6050_toFloat(accel_g, gyro_dps, accel_data, gyro_data);
 		if(imu_flag) HAL_TIM_Base_Start(&htim1);
-		if (!motor_set_zero){
+		if (!motor_set_zero && !motor_play_back){
 			mpu6050_calculate_angles(&imu_angles, accel_g, gyro_dps, __CALC_DT(cur_time));
 			motors[0].angle = imu_angles.roll;
 			sg90_set_angle(&htim2, &motors[0]);
@@ -274,8 +274,18 @@ void EXTI9_5_IRQHandler(void)
 			  SSD1306_Puts(buffer, &Font_7x10);
 			  SSD1306_CurrentX=0;
 			  SSD1306_CurrentY=40;
-			  sprintf(buffer, " Yaw: %.3f",  imu_angles.yaw);
-			  SSD1306_Puts(buffer, &Font_7x10);
+			  if(motor_set_zero){
+				  sprintf(buffer, "ZEROING");
+				  SSD1306_Puts(buffer, &Font_7x10);
+			  } else if (motor_play_back){
+				  sprintf(buffer, "PLAYBACK");
+				  SSD1306_Puts(buffer, &Font_7x10);
+			  } else {
+				  sprintf(buffer, "          ");
+				  SSD1306_Puts(buffer, &Font_7x10);
+			  }
+
+
 
 			  SSD1306_UpdateScreen();
 		}

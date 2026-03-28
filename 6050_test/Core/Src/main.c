@@ -116,6 +116,11 @@ uint16_t cur_time = 0;
 uint16_t last_tick = 0;
 float dt;
 
+uint8_t prev_state=1;
+uint8_t current_state=1;
+uint8_t idle=0;
+uint32_t idle_start;
+
 float gyro_yaw_zero_bias = 0;
 
 //IMU_Angles_t imu_angles = {
@@ -178,6 +183,7 @@ void keypad_update(uint32_t global_tick) {
             if (disable && (global_tick - disable_start > 200)) {
                 disable = 0;
                 current_col = -1;
+
             }
 
             if (current_col != -1 && !disable) {
@@ -221,6 +227,13 @@ void keypad_update(uint32_t global_tick) {
         }
     }
 }
+
+typedef enum {
+	IDLE = 0,
+	STATE_1,
+	STATE_2,
+	STATE_3
+}PLAYBACK_STATES_t;
 
 /* USER CODE END 0 */
 
@@ -338,25 +351,75 @@ int main(void)
 	  if(motor_set_zero){
 		  sg90_set_zero(&htim2);
 	  }
-	  if(motor_play_back){
+	  if(motor_play_back && !motor_set_zero){
+
+		if (idle){
+			if ((HAL_GetTick() - idle_start) > 250){
+				idle = 0;
+			}
+		}
+
+
+		if (current_state == 1&& !idle){
+			for (int i = 0; i < MOTOR_COUNT; i ++){
+					motors[i].angle = motor_snapshot[0][i];
+					sg90_set_angle(&htim2, &motors[i]);
+				}
+			idle = 1;
+			idle_start =  HAL_GetTick();
+			current_state = 2;
+			prev_state = 1;
+		}
+
+
+		if (current_state == 2&& !idle){
+			for (int i = 0; i < MOTOR_COUNT; i ++){
+				motors[i].angle = motor_snapshot[1][i];
+				sg90_set_angle(&htim2, &motors[i]);
+			}
+			idle = 1;
+			idle_start =  HAL_GetTick();
+			if (prev_state == 1){
+				current_state = 3;
+			}else {
+				current_state = 1;
+			}
+			prev_state == 2;
+
+		}
+
+		if (current_state == 3&& !idle){
+			for (int i = 0; i < MOTOR_COUNT; i ++){
+				motors[i].angle = motor_snapshot[2][i];
+				sg90_set_angle(&htim2, &motors[i]);
+			}
+			idle = 1;
+			idle_start =  HAL_GetTick();
+			current_state = 2;
+			prev_state = 3;
+
+		}
 
 	  }
+	  else {
+		  if((HAL_GetTick() - last_joystick_update_tick)>= 20){
+			  last_joystick_update_tick = HAL_GetTick();
+			  adc_dma_init(&hadc1);
+			  joystick_control(&htim2, motor_set_zero, joystick_motors[0]);
+		  }
+
+		  if((HAL_GetTick() - display_adc) >= 500){
+			  display_adc = HAL_GetTick();
+			  sprintf(message, "vx (%d) vy(%d) \r\n",*vx, *vy);
+							  print_msg(message);
+			  print_msg(message);
+		  }
+	  }
+
+
+
 
 	  Stepper_Update(HAL_GetTick());
-
-	  if((HAL_GetTick() - last_joystick_update_tick)>= 20){
-		  last_joystick_update_tick = HAL_GetTick();
-		  adc_dma_init(&hadc1);
-		  joystick_control(&htim2, motor_set_zero, joystick_motors[0]);
-	  }
-
-	  if((HAL_GetTick() - display_adc) >= 500){
-		  display_adc = HAL_GetTick();
-		  sprintf(message, "vx (%d) vy(%d) \r\n",*vx, *vy);
-		                  print_msg(message);
-		  print_msg(message);
-	  }
-
 	  keypad_update(HAL_GetTick());
 
 
