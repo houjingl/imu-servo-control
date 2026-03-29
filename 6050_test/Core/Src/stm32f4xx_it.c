@@ -26,6 +26,7 @@
 #include "mpu6050.h"
 #include "ssd1306.h"
 #include "sg90.h"
+#include "joystick.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -55,11 +56,25 @@
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+uint32_t last_btn_intr_time = 0;
+static uint16_t servo_update_counter = 0;
+
+
+volatile float current_arr = 10000.0f;
+
+#define ARR_MIN_SPEED 10000.0f
+#define ARR_MAX_SPEED 100.0f
+#define DECEL_STEPS   200
+
+float arr_alpha = 0.05f;
 
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
 extern DMA_HandleTypeDef hdma_adc1;
+extern TIM_HandleTypeDef htim3;
+extern TIM_HandleTypeDef htim4;
+extern TIM_HandleTypeDef htim7;
 /* USER CODE BEGIN EV */
 
 /* USER CODE END EV */
@@ -208,6 +223,10 @@ void SysTick_Handler(void)
 void EXTI3_IRQHandler(void)
 {
   /* USER CODE BEGIN EXTI3_IRQn 0 */
+	if (__HAL_GPIO_EXTI_GET_IT(JOYSTICK_BTN_Pin) != RESET && (HAL_GetTick() - last_btn_intr_time >= 10)) {
+		claw_open_flag ^= 1;
+		last_btn_intr_time = HAL_GetTick();
+	}
 
   /* USER CODE END EXTI3_IRQn 0 */
   HAL_GPIO_EXTI_IRQHandler(JOYSTICK_BTN_Pin);
@@ -223,14 +242,18 @@ void EXTI4_IRQHandler(void)
 {
   /* USER CODE BEGIN EXTI4_IRQn 0 */
 
-	if (__HAL_GPIO_EXTI_GET_IT(COL1_Pin) != RESET) {
-		pressed =1;
-		last = current_col;
-		current_col = 0;
+	if (__HAL_GPIO_EXTI_GET_IT(PLAYBACK_Pin) != RESET && (HAL_GetTick() - last_btn_intr_time >= 10)) {
+		motor_play_back ^=1;
+		last_btn_intr_time = HAL_GetTick();
+		if (motor_play_back) HAL_TIM_Base_Stop_IT(&htim3);
+		else HAL_TIM_Base_Start_IT(&htim3);
+		HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_RESET);
+		HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
+		HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, GPIO_PIN_RESET);
 	}
 
   /* USER CODE END EXTI4_IRQn 0 */
-  HAL_GPIO_EXTI_IRQHandler(COL1_Pin);
+  HAL_GPIO_EXTI_IRQHandler(PLAYBACK_Pin);
   /* USER CODE BEGIN EXTI4_IRQn 1 */
 
   /* USER CODE END EXTI4_IRQn 1 */
@@ -285,28 +308,37 @@ void EXTI9_5_IRQHandler(void)
 				  SSD1306_Puts(buffer, &Font_7x10);
 			  }
 
-
-
 			  SSD1306_UpdateScreen();
 		}
-
 	}
 
-	if (__HAL_GPIO_EXTI_GET_IT(COL2_Pin) != RESET) {
-		pressed =1;
-		last = current_col;
-		  current_col = 1;
+	if (__HAL_GPIO_EXTI_GET_IT(SNAPSHOT_1_Pin) != RESET && (HAL_GetTick() - last_btn_intr_time >= 10)) {
+		for(int j = 0; j < MOTOR_COUNT; j++) {
+			motor_snapshot[0][j] = motors[j].angle;
+		}
+		HAL_GPIO_TogglePin(LD1_GPIO_Port, LD1_Pin);
+		last_btn_intr_time = HAL_GetTick();
 	  }
-	if (__HAL_GPIO_EXTI_GET_IT(COL3_Pin) != RESET) {
-		pressed =1;
-		last = current_col;
-		  current_col = 2;
+	if (__HAL_GPIO_EXTI_GET_IT(SNAPSHOT_2_Pin) != RESET && (HAL_GetTick() - last_btn_intr_time >= 10)) {
+		for(int j = 0; j < MOTOR_COUNT; j++) {
+			motor_snapshot[1][j] = motors[j].angle;
+		}
+		HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+		last_btn_intr_time = HAL_GetTick();
+	}
+	if (__HAL_GPIO_EXTI_GET_IT(SNAPSHOT_3_Pin) != RESET && (HAL_GetTick() - last_btn_intr_time >= 10)) {
+		for(int j = 0; j < MOTOR_COUNT; j++) {
+			motor_snapshot[2][j] = motors[j].angle;
+		}
+		HAL_GPIO_TogglePin(LD3_GPIO_Port, LD3_Pin);
+		last_btn_intr_time = HAL_GetTick();
 	}
 
 
   /* USER CODE END EXTI9_5_IRQn 0 */
-  HAL_GPIO_EXTI_IRQHandler(COL2_Pin);
-  HAL_GPIO_EXTI_IRQHandler(COL3_Pin);
+  HAL_GPIO_EXTI_IRQHandler(SNAPSHOT_3_Pin);
+  HAL_GPIO_EXTI_IRQHandler(SNAPSHOT_2_Pin);
+  HAL_GPIO_EXTI_IRQHandler(SNAPSHOT_1_Pin);
   HAL_GPIO_EXTI_IRQHandler(imu_exti_pin_Pin);
   /* USER CODE BEGIN EXTI9_5_IRQn 1 */
 
@@ -316,17 +348,113 @@ void EXTI9_5_IRQHandler(void)
 }
 
 /**
+  * @brief This function handles TIM3 global interrupt.
+  */
+void TIM3_IRQHandler(void)
+{
+  /* USER CODE BEGIN TIM3_IRQn 0 */
+	if (!motor_play_back){
+		servo_update_counter++;
+
+		if (servo_update_counter >= 0) {
+			servo_update_counter = 0;
+
+			float alpha = 0.05f;
+			float error = target_servo_angle - joystick_motors[0]->angle;
+
+			if (fabs(error) < 0.5f) {
+				joystick_motors[0]->angle = target_servo_angle;
+			} else {
+				joystick_motors[0]->angle += (error * alpha);
+			}
+
+			if (joystick_motors[0]->angle >= 90.0f) {
+				joystick_motors[0]->angle = 90.0f;
+			} else if (joystick_motors[0]->angle <= -90.0f) {
+				joystick_motors[0]->angle = -90.0f;
+			}
+
+			sg90_set_angle(&htim2, joystick_motors[0]);
+		}
+	}
+
+//	Stepper_Update_500us();
+
+  /* USER CODE END TIM3_IRQn 0 */
+  HAL_TIM_IRQHandler(&htim3);
+  /* USER CODE BEGIN TIM3_IRQn 1 */
+
+  /* USER CODE END TIM3_IRQn 1 */
+}
+
+/**
+  * @brief This function handles TIM4 global interrupt.
+  */
+void TIM4_IRQHandler(void)
+{
+  /* USER CODE BEGIN TIM4_IRQn 0 */
+	if (!motor_play_back || motor_set_zero){
+	  adc_dma_init(&hadc1);
+	  joystick_control(&htim2, motor_set_zero);
+	}
+
+  /* USER CODE END TIM4_IRQn 0 */
+  HAL_TIM_IRQHandler(&htim4);
+  /* USER CODE BEGIN TIM4_IRQn 1 */
+
+  /* USER CODE END TIM4_IRQn 1 */
+}
+
+/**
   * @brief This function handles EXTI line[15:10] interrupts.
   */
 void EXTI15_10_IRQHandler(void)
 {
   /* USER CODE BEGIN EXTI15_10_IRQn 0 */
+	if (__HAL_GPIO_EXTI_GET_IT(USER_Btn_Pin) != RESET && (HAL_GetTick() - last_btn_intr_time >= 10)){
+		motor_set_zero ^= 1;
+		last_btn_intr_time = HAL_GetTick();
+	}
 
   /* USER CODE END EXTI15_10_IRQn 0 */
   HAL_GPIO_EXTI_IRQHandler(USER_Btn_Pin);
   /* USER CODE BEGIN EXTI15_10_IRQn 1 */
 
   /* USER CODE END EXTI15_10_IRQn 1 */
+}
+
+/**
+  * @brief This function handles TIM7 global interrupt.
+  */
+void TIM7_IRQHandler(void)
+{
+  /* USER CODE BEGIN TIM7_IRQn 0 */
+	if (current_absolute_steps == target_absolute_steps) {
+		HAL_TIM_Base_Stop_IT(&htim7);
+		Stepper_Update_500us();
+		return;
+	}
+
+	Stepper_Update_500us();
+
+	int32_t remaining = abs(target_absolute_steps - current_absolute_steps);
+	float target_arr;
+
+	if (remaining <= DECEL_STEPS) {
+		target_arr = ARR_MIN_SPEED;
+	} else {
+		target_arr = ARR_MAX_SPEED;
+	}
+
+	current_arr += (target_arr - current_arr) * arr_alpha;
+
+	__HAL_TIM_SET_AUTORELOAD(&htim7, (uint32_t)current_arr);
+
+  /* USER CODE END TIM7_IRQn 0 */
+  HAL_TIM_IRQHandler(&htim7);
+  /* USER CODE BEGIN TIM7_IRQn 1 */
+
+  /* USER CODE END TIM7_IRQn 1 */
 }
 
 /**

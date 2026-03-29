@@ -11,9 +11,10 @@ HAL_StatusTypeDef adc_dma_init(ADC_HandleTypeDef* hadc)
 }
 
 uint8_t last_motor_set_zero = 0; //a neg edge trigger flag
+float target_servo_angle = 0;
 
 //function to be called inside main every 20ms
-void joystick_control(TIM_HandleTypeDef* htim, uint8_t motor_set_zero_flag, motor_t* servo_motor)
+void joystick_control(TIM_HandleTypeDef* htim, uint8_t motor_set_zero_flag)
 {
 	int16_t x_offset = (int16_t)(*vx) - JOYSTICK_CENTER;
 	int16_t y_offset = (int16_t)(*vy) - JOYSTICK_CENTER;
@@ -29,12 +30,13 @@ void joystick_control(TIM_HandleTypeDef* htim, uint8_t motor_set_zero_flag, moto
 
 	//this is for the servo motor -> I used the motor for yaw
 	if (motor_set_zero_flag == 0) {
-		servo_motor -> angle += delta_servo_angle;
+		target_servo_angle += delta_servo_angle;
 
-		if (servo_motor -> angle > 90.0f) servo_motor -> angle = 90.0f;
-		if (servo_motor -> angle < -90.0f)   servo_motor -> angle = -90.0f;
-
-		sg90_set_angle(htim, servo_motor);
+		if (target_servo_angle > 90.0f) target_servo_angle = 90.0f;
+		if (target_servo_angle < -90.0f)   target_servo_angle = -90.0f;
+	}
+	else {
+		target_servo_angle = 0.0f;
 	}
 
 	//this is for updating the step motor angle

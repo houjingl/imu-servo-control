@@ -46,6 +46,7 @@ extern float gyro_dps[3];
 extern I2C_HandleTypeDef hi2c2;
 extern TIM_HandleTypeDef htim1;
 extern TIM_HandleTypeDef htim2;
+extern ADC_HandleTypeDef hadc1;
 extern uint16_t cur_time;
 extern uint16_t last_time;
 
@@ -65,6 +66,8 @@ extern uint64_t disable_start;
 
 extern uint8_t motor_set_zero;
 extern uint8_t motor_play_back;
+
+extern uint8_t claw_open_flag;
 
 /* USER CODE END ET */
 
@@ -88,15 +91,9 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
-#define COL1_Pin GPIO_PIN_4
-#define COL1_GPIO_Port GPIOE
-#define COL1_EXTI_IRQn EXTI4_IRQn
-#define COL2_Pin GPIO_PIN_5
-#define COL2_GPIO_Port GPIOE
-#define COL2_EXTI_IRQn EXTI9_5_IRQn
-#define COL3_Pin GPIO_PIN_6
-#define COL3_GPIO_Port GPIOE
-#define COL3_EXTI_IRQn EXTI9_5_IRQn
+#define PLAYBACK_Pin GPIO_PIN_4
+#define PLAYBACK_GPIO_Port GPIOE
+#define PLAYBACK_EXTI_IRQn EXTI4_IRQn
 #define USER_Btn_Pin GPIO_PIN_13
 #define USER_Btn_GPIO_Port GPIOC
 #define USER_Btn_EXTI_IRQn EXTI15_10_IRQn
@@ -144,14 +141,15 @@ void Error_Handler(void);
 #define TMS_GPIO_Port GPIOA
 #define TCK_Pin GPIO_PIN_14
 #define TCK_GPIO_Port GPIOA
-#define ROW4_Pin GPIO_PIN_4
-#define ROW4_GPIO_Port GPIOD
-#define ROW3_Pin GPIO_PIN_5
-#define ROW3_GPIO_Port GPIOD
-#define ROW2_Pin GPIO_PIN_6
-#define ROW2_GPIO_Port GPIOD
-#define ROW1_Pin GPIO_PIN_7
-#define ROW1_GPIO_Port GPIOD
+#define SNAPSHOT_3_Pin GPIO_PIN_5
+#define SNAPSHOT_3_GPIO_Port GPIOD
+#define SNAPSHOT_3_EXTI_IRQn EXTI9_5_IRQn
+#define SNAPSHOT_2_Pin GPIO_PIN_6
+#define SNAPSHOT_2_GPIO_Port GPIOD
+#define SNAPSHOT_2_EXTI_IRQn EXTI9_5_IRQn
+#define SNAPSHOT_1_Pin GPIO_PIN_7
+#define SNAPSHOT_1_GPIO_Port GPIOD
+#define SNAPSHOT_1_EXTI_IRQn EXTI9_5_IRQn
 #define LD2_Pin GPIO_PIN_7
 #define LD2_GPIO_Port GPIOB
 

@@ -47,6 +47,7 @@ extern float motor_snapshot[3][MOTOR_COUNT];
 
 extern motor_t* imu_motors[IMU_SERVO_MOTOR_COUNT];
 extern motor_t* joystick_motors[JOYSTICK_SERVO_MOTOR_COUNT];
+extern motor_t* claw_motor;
 
 HAL_StatusTypeDef sg90_set_angle(TIM_HandleTypeDef* htim, const motor_t* motor);
 HAL_StatusTypeDef sg90_init (TIM_HandleTypeDef* htim);

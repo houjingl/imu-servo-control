@@ -60,6 +60,9 @@ I2C_HandleTypeDef hi2c2;
 
 TIM_HandleTypeDef htim1;
 TIM_HandleTypeDef htim2;
+TIM_HandleTypeDef htim3;
+TIM_HandleTypeDef htim4;
+TIM_HandleTypeDef htim7;
 
 UART_HandleTypeDef huart3;
 
@@ -80,6 +83,9 @@ static void MX_TIM1_Init(void);
 static void MX_TIM2_Init(void);
 static void MX_I2C1_Init(void);
 static void MX_ADC1_Init(void);
+static void MX_TIM3_Init(void);
+static void MX_TIM4_Init(void);
+static void MX_TIM7_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -138,8 +144,9 @@ float x,y,z;
 uint16_t counts;
 char buffer[100];
 
-uint8_t motor_set_zero = 0;
+uint8_t motor_set_zero = 1;
 uint8_t motor_play_back = 0;
+uint8_t claw_open_flag = 0;
 
 float mpu6050_get_zero_bias()
 {
@@ -154,78 +161,6 @@ float mpu6050_get_zero_bias()
 	}
 
 	return gyro_yaw_zero_bias / imu_cal_count;
-}
-
-//A Small FSM for the keypad
-uint8_t scan_state = 0; //0 -> gpio set pins 1 -> gpio check intr result
-uint8_t i = 0;
-uint32_t scan_tick = 0;
-uint16_t r_pins [4] = {ROW1_Pin,ROW2_Pin,ROW3_Pin,ROW4_Pin};
-uint16_t c_pins [3] = {COL1_Pin,COL2_Pin,COL3_Pin};
-uint16_t  pin_stat [4][3] = {0};
-void keypad_update(uint32_t global_tick) {
-
-    char message[2];
-
-    if (scan_state == 0) {
-        HAL_GPIO_WritePin(ROW_Port, ROW1_Pin, GPIO_PIN_RESET);
-        HAL_GPIO_WritePin(ROW_Port, ROW2_Pin, GPIO_PIN_RESET);
-        HAL_GPIO_WritePin(ROW_Port, ROW3_Pin, GPIO_PIN_RESET);
-        HAL_GPIO_WritePin(ROW_Port, ROW4_Pin, GPIO_PIN_RESET);
-        HAL_GPIO_WritePin(ROW_Port, r_pins[i], GPIO_PIN_SET);
-
-        scan_tick = global_tick;
-        scan_state = 1;
-    }
-    else if (scan_state == 1) {
-        if ((global_tick - scan_tick) >= 5) {
-
-            if (disable && (global_tick - disable_start > 200)) {
-                disable = 0;
-                current_col = -1;
-
-            }
-
-            if (current_col != -1 && !disable) {
-                sprintf(message, "%c", keypad[i][current_col]);
-                print_msg(message);
-
-                if (keypad[i][current_col] == '#') {
-                    motor_set_zero ^= 0x1;
-                }
-                if (keypad[i][current_col] == '1') {
-                    for(int j = 0; j < MOTOR_COUNT; j++) {
-                        motor_snapshot[0][j] = motors[j].angle;
-                    }
-                    HAL_GPIO_TogglePin(LD1_GPIO_Port, LD1_Pin);
-                }
-                if (keypad[i][current_col] == '2') {
-                    for(int j = 0; j < MOTOR_COUNT; j++) {
-                        motor_snapshot[1][j] = motors[j].angle;
-                    }
-                    HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
-                }
-                if (keypad[i][current_col] == '3') {
-                    for(int j = 0; j < MOTOR_COUNT; j++) {
-                        motor_snapshot[2][j] = motors[j].angle;
-                    }
-                    HAL_GPIO_TogglePin(LD3_GPIO_Port, LD3_Pin);
-                }
-                if (keypad[i][current_col] == '*') {
-                    motor_play_back ^= 0x1;
-                }
-
-                disable = 1;
-                disable_start = global_tick;
-            }
-
-            i++;
-            if (i >= 4) {
-                i = 0;
-            }
-            scan_state = 0;
-        }
-    }
 }
 
 typedef enum {
@@ -274,6 +209,9 @@ int main(void)
   MX_TIM2_Init();
   MX_I2C1_Init();
   MX_ADC1_Init();
+  MX_TIM3_Init();
+  MX_TIM4_Init();
+  MX_TIM7_Init();
   /* USER CODE BEGIN 2 */
 
   if(SSD1306_Init()!= HAL_OK) HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_SET);
@@ -282,15 +220,13 @@ int main(void)
   SSD1306_Clear();
   SSD1306_Stopscroll();
 
-
-
 	SSD1306_CurrentX=0;
 	SSD1306_CurrentY=0;
 	sprintf(buffer, " X %.2f\n \n Y Angle: %.2f\n \n Z Angle: %.2f", x, y, z);//Y angle: %.2f\nZ angle: %.2f
 	SSD1306_Puts(buffer, &Font_7x10);
 	SSD1306_UpdateScreen();
 	HAL_Delay(300);
-	 SSD1306_Clear();
+	SSD1306_Clear();
 
   if(mpu6050_init(&hi2c2, MPU6050_ACCEL_RANGE_2G, MPU6050_GYRO_RANGE_250) != HAL_OK){
 	  HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);
@@ -317,12 +253,9 @@ int main(void)
 //  mpu6050_getGyroValue(&hi2c2, gyro_data);
 //    dps = degrees per second
   HAL_TIM_Base_Start(&htim1);
-
-
-  HAL_GPIO_WritePin(ROW_Port, ROW1_Pin, GPIO_PIN_SET);
-  HAL_GPIO_WritePin(ROW_Port, ROW2_Pin, GPIO_PIN_SET);
-  HAL_GPIO_WritePin(ROW_Port, ROW3_Pin, GPIO_PIN_SET);
-  HAL_GPIO_WritePin(ROW_Port, ROW4_Pin, GPIO_PIN_SET);
+  HAL_TIM_Base_Start_IT(&htim3);
+  HAL_TIM_Base_Start_IT(&htim4);
+  HAL_TIM_Base_Start_IT(&htim7);
 //  char message[100];
   uint32_t last_joystick_update_tick = HAL_GetTick();
   uint32_t display_adc = HAL_GetTick();
@@ -335,33 +268,34 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
 
-//	  HAL_Delay(1500);
-//	  if (imu_flag){
-//		  mpu6050_calculate_angles(&imu_angles, accel_g, gyro_dps, __CALC_DT(cur_time));
-//		  motors[0].angle = imu_angles.roll;
-//		  sg90_set_angle(&htim2, &motors[0]);
-//		  motors[1].angle = imu_angles.pitch;
-//		  sg90_set_angle(&htim2, &motors[1]);
-//
-////		  Madgwick_Update(gyro_dps[0], gyro_dps[1], gyro_dps[2],
-////		                      accel_g[0],  accel_g[1],  accel_g[2],  __CALC_DT(cur_time));
-////		  Madgwick_ComputeAngles(&imu_angles);
-//		  imu_flag = 0;
-//	  }
 	  if(motor_set_zero){
 		  sg90_set_zero(&htim2);
 	  }
+
+	  if (claw_open_flag && !motor_set_zero){
+		  claw_motor -> angle = -45.0f;
+		  sg90_set_angle(&htim2, claw_motor);
+	  }
+	  else {
+		  claw_motor -> angle = 0.0f;
+		  sg90_set_angle(&htim2, claw_motor);
+	  }
+
+	  if (target_absolute_steps != current_absolute_steps){
+		  HAL_TIM_Base_Start_IT(&htim7);
+	  }
+
 	  if(motor_play_back && !motor_set_zero){
 
 		if (idle){
-			if ((HAL_GetTick() - idle_start) > 250){
+			if ((HAL_GetTick() - idle_start) > 100){
 				idle = 0;
 			}
 		}
 
 
 		if (current_state == 1&& !idle){
-			for (int i = 0; i < MOTOR_COUNT; i ++){
+			for (int i = 0; i < IMU_SERVO_MOTOR_COUNT + 1; i ++){
 					motors[i].angle = motor_snapshot[0][i];
 					sg90_set_angle(&htim2, &motors[i]);
 				}
@@ -369,11 +303,15 @@ int main(void)
 			idle_start =  HAL_GetTick();
 			current_state = 2;
 			prev_state = 1;
+			HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, GPIO_PIN_SET);
+			HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, GPIO_PIN_RESET);
 		}
 
 
 		if (current_state == 2&& !idle){
-			for (int i = 0; i < MOTOR_COUNT; i ++){
+			for (int i = 0; i < IMU_SERVO_MOTOR_COUNT + 1; i ++){
 				motors[i].angle = motor_snapshot[1][i];
 				sg90_set_angle(&htim2, &motors[i]);
 			}
@@ -385,11 +323,15 @@ int main(void)
 				current_state = 1;
 			}
 			prev_state == 2;
+			HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);
+			HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, GPIO_PIN_RESET);
 
 		}
 
 		if (current_state == 3&& !idle){
-			for (int i = 0; i < MOTOR_COUNT; i ++){
+			for (int i = 0; i < IMU_SERVO_MOTOR_COUNT + 1; i ++){
 				motors[i].angle = motor_snapshot[2][i];
 				sg90_set_angle(&htim2, &motors[i]);
 			}
@@ -397,31 +339,14 @@ int main(void)
 			idle_start =  HAL_GetTick();
 			current_state = 2;
 			prev_state = 3;
+			HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_SET);
+			HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, GPIO_PIN_RESET);
 
 		}
 
 	  }
-	  else {
-		  if((HAL_GetTick() - last_joystick_update_tick)>= 20){
-			  last_joystick_update_tick = HAL_GetTick();
-			  adc_dma_init(&hadc1);
-			  joystick_control(&htim2, motor_set_zero, joystick_motors[0]);
-		  }
-
-		  if((HAL_GetTick() - display_adc) >= 500){
-			  display_adc = HAL_GetTick();
-			  sprintf(message, "vx (%d) vy(%d) \r\n",*vx, *vy);
-							  print_msg(message);
-			  print_msg(message);
-		  }
-	  }
-
-
-
-
-	  Stepper_Update(HAL_GetTick());
-	  keypad_update(HAL_GetTick());
-
 
   }
   /* USER CODE END 3 */
@@ -727,6 +652,134 @@ static void MX_TIM2_Init(void)
 }
 
 /**
+  * @brief TIM3 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM3_Init(void)
+{
+
+  /* USER CODE BEGIN TIM3_Init 0 */
+
+  /* USER CODE END TIM3_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM3_Init 1 */
+
+  /* USER CODE END TIM3_Init 1 */
+  htim3.Instance = TIM3;
+  htim3.Init.Prescaler = 83;
+  htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim3.Init.Period = 499;
+  htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim3) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim3, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim3, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM3_Init 2 */
+
+  /* USER CODE END TIM3_Init 2 */
+
+}
+
+/**
+  * @brief TIM4 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM4_Init(void)
+{
+
+  /* USER CODE BEGIN TIM4_Init 0 */
+
+  /* USER CODE END TIM4_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM4_Init 1 */
+
+  /* USER CODE END TIM4_Init 1 */
+  htim4.Instance = TIM4;
+  htim4.Init.Prescaler = 84;
+  htim4.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim4.Init.Period = 30000 - 1;
+  htim4.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim4.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim4) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim4, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim4, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM4_Init 2 */
+
+  /* USER CODE END TIM4_Init 2 */
+
+}
+
+/**
+  * @brief TIM7 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM7_Init(void)
+{
+
+  /* USER CODE BEGIN TIM7_Init 0 */
+
+  /* USER CODE END TIM7_Init 0 */
+
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM7_Init 1 */
+
+  /* USER CODE END TIM7_Init 1 */
+  htim7.Instance = TIM7;
+  htim7.Init.Prescaler = 84;
+  htim7.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim7.Init.Period = 1000 - 1;
+  htim7.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
+  if (HAL_TIM_Base_Init(&htim7) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim7, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM7_Init 2 */
+
+  /* USER CODE END TIM7_Init 2 */
+
+}
+
+/**
   * @brief USART3 Initialization Function
   * @param None
   * @retval None
@@ -843,14 +896,11 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOG, GPIO_PIN_6, GPIO_PIN_RESET);
 
-  /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOD, ROW4_Pin|ROW3_Pin|ROW2_Pin|ROW1_Pin, GPIO_PIN_RESET);
-
-  /*Configure GPIO pins : COL1_Pin COL2_Pin COL3_Pin */
-  GPIO_InitStruct.Pin = COL1_Pin|COL2_Pin|COL3_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
-  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
-  HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
+  /*Configure GPIO pin : PLAYBACK_Pin */
+  GPIO_InitStruct.Pin = PLAYBACK_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  HAL_GPIO_Init(PLAYBACK_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pins : USER_Btn_Pin imu_exti_pin_Pin */
   GPIO_InitStruct.Pin = USER_Btn_Pin|imu_exti_pin_Pin;
@@ -898,11 +948,10 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(USB_OverCurrent_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : ROW4_Pin ROW3_Pin ROW2_Pin ROW1_Pin */
-  GPIO_InitStruct.Pin = ROW4_Pin|ROW3_Pin|ROW2_Pin|ROW1_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  /*Configure GPIO pins : SNAPSHOT_3_Pin SNAPSHOT_2_Pin SNAPSHOT_1_Pin */
+  GPIO_InitStruct.Pin = SNAPSHOT_3_Pin|SNAPSHOT_2_Pin|SNAPSHOT_1_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
 
   /* EXTI interrupt init*/

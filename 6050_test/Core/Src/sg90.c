@@ -11,6 +11,7 @@ motor_t motors[MOTOR_COUNT]; //This is the array of motors controlled by the IMU
 
 motor_t* imu_motors[IMU_SERVO_MOTOR_COUNT];
 motor_t* joystick_motors[JOYSTICK_SERVO_MOTOR_COUNT];
+motor_t* claw_motor;
 
 float motor_snapshot[3][MOTOR_COUNT];
 const uint32_t tim_channel_lut[4] = {TIM_CHANNEL_1,TIM_CHANNEL_2,TIM_CHANNEL_3,TIM_CHANNEL_4};
@@ -59,6 +60,9 @@ HAL_StatusTypeDef sg90_init (TIM_HandleTypeDef* htim)
 		joystick_motors[i] = &motors[IMU_SERVO_MOTOR_COUNT + i];
 	}
 
+	claw_motor = &motors[IMU_SERVO_MOTOR_COUNT + JOYSTICK_SERVO_MOTOR_COUNT];
+
+
 	//Starting all channels
 	HAL_TIM_PWM_Start(htim, TIM_CHANNEL_1);
 	HAL_TIM_PWM_Start(htim, TIM_CHANNEL_2);
@@ -97,8 +101,5 @@ void sg90_set_zero (TIM_HandleTypeDef* htim)
 
 }
 
-void sg90_motor_play_back(TIM_HandleTypeDef* htim){
-
-}
 
 

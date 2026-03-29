@@ -49,6 +49,24 @@ void Stepper_Update(uint32_t global_tick)
     }
 }
 
+void Stepper_Update_500us()
+{
+    if (current_absolute_steps != target_absolute_steps) {
+		if (target_absolute_steps > current_absolute_steps) {
+			current_absolute_steps++;
+		} else {
+			current_absolute_steps--;
+		}
+
+		Stepper_SetPhase(current_absolute_steps);
+    } else {
+    	HAL_GPIO_WritePin(STEP_PIN_0_GPIO_Port, STEP_PIN_0_Pin, GPIO_PIN_RESET);
+		HAL_GPIO_WritePin(STEP_PIN_1_GPIO_Port, STEP_PIN_1_Pin, GPIO_PIN_RESET);
+		HAL_GPIO_WritePin(STEP_PIN_2_GPIO_Port, STEP_PIN_2_Pin, GPIO_PIN_RESET);
+		HAL_GPIO_WritePin(STEP_PIN_3_GPIO_Port, STEP_PIN_3_Pin, GPIO_PIN_RESET);
+    }
+}
+
 //void Stepper_SetTargetAngle(float target_angle)
 //{
 //    target_absolute_steps = (int32_t)((target_angle / 360.0f) * STEPS_PER_REV);

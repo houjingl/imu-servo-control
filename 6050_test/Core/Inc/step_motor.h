@@ -20,6 +20,7 @@ extern int32_t target_absolute_steps;
 
 void Stepper_SetPhase(int32_t step_index);
 void Stepper_Update(uint32_t global_tick);
+void Stepper_Update_500us();
 //void Stepper_SetTargetAngle(float target_angle);
 //void Stepper_MoveRelativeSteps(int32_t steps);
 //void Stepper_ResetZero(void);
