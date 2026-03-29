@@ -7,7 +7,13 @@
 
 #include "sg90.h"
 
-motor_t motors[MOTOR_COUNT];
+motor_t motors[MOTOR_COUNT]; //This is the array of motors controlled by the IMU
+
+motor_t* imu_motors[IMU_SERVO_MOTOR_COUNT];
+motor_t* joystick_motors[JOYSTICK_SERVO_MOTOR_COUNT];
+motor_t* claw_motor;
+
+float motor_snapshot[3][MOTOR_COUNT];
 const uint32_t tim_channel_lut[4] = {TIM_CHANNEL_1,TIM_CHANNEL_2,TIM_CHANNEL_3,TIM_CHANNEL_4};
 
 HAL_StatusTypeDef sg90_set_angle(TIM_HandleTypeDef* htim, const motor_t* motor)
@@ -29,7 +35,7 @@ HAL_StatusTypeDef sg90_set_angle(TIM_HandleTypeDef* htim, const motor_t* motor)
 		return HAL_OK;
 	}
 
-	uint32_t digital = (uint32_t)((float)((float)(motor -> angle + 90) / 180.0) * PWM_RANGE) + PWM_MIN;
+	uint32_t digital = (uint32_t)((float)((float)(motor -> angle + 90.0) / 180.0) * PWM_RANGE) + PWM_MIN;
 	__HAL_TIM_SET_COMPARE(htim, motor -> tim_channel, digital);
 	return HAL_OK;
 
@@ -45,6 +51,19 @@ HAL_StatusTypeDef sg90_init (TIM_HandleTypeDef* htim)
 		if(sg90_set_angle(htim, &motors[i]) != HAL_OK) return HAL_ERROR;
 	}
 
+	//Assigning pointer addresses
+	for(int i = 0; i < IMU_SERVO_MOTOR_COUNT; i ++){
+		imu_motors[i] = &motors[i];
+	}
+
+	for(int i = 0; i < JOYSTICK_SERVO_MOTOR_COUNT; i ++){
+		joystick_motors[i] = &motors[IMU_SERVO_MOTOR_COUNT + i];
+	}
+
+	claw_motor = &motors[IMU_SERVO_MOTOR_COUNT + JOYSTICK_SERVO_MOTOR_COUNT];
+
+
+	//Starting all channels
 	HAL_TIM_PWM_Start(htim, TIM_CHANNEL_1);
 	HAL_TIM_PWM_Start(htim, TIM_CHANNEL_2);
 	HAL_TIM_PWM_Start(htim, TIM_CHANNEL_3);
@@ -72,5 +91,15 @@ void sg90_sweep_test (TIM_HandleTypeDef* htim)
 		HAL_Delay(10);
 	}
 }
+
+void sg90_set_zero (TIM_HandleTypeDef* htim)
+{
+	for (int i = 0; i < MOTOR_COUNT; i ++){
+		motors[i].angle = 0;
+		sg90_set_angle(htim, &motors[i]);
+	}
+
+}
+
 
 

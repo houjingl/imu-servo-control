@@ -38,21 +38,36 @@ extern "C" {
 /* Exported types ------------------------------------------------------------*/
 /* USER CODE BEGIN ET */
 
-extern uint8_t imu_flag;
-extern int16_t accel_data[3];
-extern int16_t gyro_data[3];
+extern volatile uint8_t imu_flag;
+extern volatile int16_t accel_data[3];
+extern volatile int16_t gyro_data[3];
 extern float accel_g[3];
 extern float gyro_dps[3];
 extern I2C_HandleTypeDef hi2c2;
 extern TIM_HandleTypeDef htim1;
+extern TIM_HandleTypeDef htim2;
+extern ADC_HandleTypeDef hadc1;
 extern uint16_t cur_time;
 extern uint16_t last_time;
+
+extern float gyro_yaw_zero_bias;
 
 extern uint16_t counts;
 extern char buffer[100];
 
 extern uint16_t SSD1306_CurrentX;
 extern uint16_t SSD1306_CurrentY;
+
+extern int8_t current_col;
+extern int8_t last;
+extern int8_t pressed;
+extern uint64_t disable;
+extern uint64_t disable_start;
+
+extern uint8_t motor_set_zero;
+extern uint8_t motor_play_back;
+
+extern uint8_t claw_open_flag;
 
 /* USER CODE END ET */
 
@@ -76,13 +91,31 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
+#define PLAYBACK_Pin GPIO_PIN_4
+#define PLAYBACK_GPIO_Port GPIOE
+#define PLAYBACK_EXTI_IRQn EXTI4_IRQn
 #define USER_Btn_Pin GPIO_PIN_13
 #define USER_Btn_GPIO_Port GPIOC
 #define USER_Btn_EXTI_IRQn EXTI15_10_IRQn
+#define JOYSTICK_BTN_Pin GPIO_PIN_3
+#define JOYSTICK_BTN_GPIO_Port GPIOF
+#define JOYSTICK_BTN_EXTI_IRQn EXTI3_IRQn
 #define MCO_Pin GPIO_PIN_0
 #define MCO_GPIO_Port GPIOH
+#define VRX_Pin GPIO_PIN_0
+#define VRX_GPIO_Port GPIOC
+#define VRY_Pin GPIO_PIN_3
+#define VRY_GPIO_Port GPIOC
 #define LD1_Pin GPIO_PIN_0
 #define LD1_GPIO_Port GPIOB
+#define STEP_PIN_0_Pin GPIO_PIN_13
+#define STEP_PIN_0_GPIO_Port GPIOF
+#define STEP_PIN_3_Pin GPIO_PIN_14
+#define STEP_PIN_3_GPIO_Port GPIOF
+#define STEP_PIN_1_Pin GPIO_PIN_9
+#define STEP_PIN_1_GPIO_Port GPIOE
+#define STEP_PIN_2_Pin GPIO_PIN_11
+#define STEP_PIN_2_GPIO_Port GPIOE
 #define LD3_Pin GPIO_PIN_14
 #define LD3_GPIO_Port GPIOB
 #define STLK_RX_Pin GPIO_PIN_8
@@ -108,11 +141,25 @@ void Error_Handler(void);
 #define TMS_GPIO_Port GPIOA
 #define TCK_Pin GPIO_PIN_14
 #define TCK_GPIO_Port GPIOA
+#define SNAPSHOT_3_Pin GPIO_PIN_5
+#define SNAPSHOT_3_GPIO_Port GPIOD
+#define SNAPSHOT_3_EXTI_IRQn EXTI9_5_IRQn
+#define SNAPSHOT_2_Pin GPIO_PIN_6
+#define SNAPSHOT_2_GPIO_Port GPIOD
+#define SNAPSHOT_2_EXTI_IRQn EXTI9_5_IRQn
+#define SNAPSHOT_1_Pin GPIO_PIN_7
+#define SNAPSHOT_1_GPIO_Port GPIOD
+#define SNAPSHOT_1_EXTI_IRQn EXTI9_5_IRQn
 #define LD2_Pin GPIO_PIN_7
 #define LD2_GPIO_Port GPIOB
 
 /* USER CODE BEGIN Private defines */
 void print_msg(char * msg);
+#define ROW_Port GPIOD
+#define COL_Port GPIOE
+#define TIMER_SCALE 				1000000.0f
+#define __CALC_DT(_CUR_TIME_)	 	(float)_CUR_TIME_ / TIMER_SCALE
+
 
 /* USER CODE END Private defines */
 

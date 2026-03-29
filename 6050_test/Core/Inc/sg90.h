@@ -22,10 +22,10 @@
 #define PWM_PERIOD_uS	0.0119f
 
 #define PWM_MIN 		42017
-#define PWM_MIN_uS		500 //-90deg
+#define PWM_MIN_uS		500.0f //-90deg
 
 #define PWM_MAX			201681
-#define PWM_MAX_uS		2400 //90deg
+#define PWM_MAX_uS		2400.0f //90deg
 
 #define PWM_ZERO 		(PWM_MAX + PWM_MIN)/2
 
@@ -33,16 +33,26 @@
 
 #define MOTOR_COUNT		4
 
+#define JOYSTICK_SERVO_MOTOR_COUNT 	1
+#define IMU_SERVO_MOTOR_COUNT 2 //This is the number of motors controlled by the imu
+#define CLAW_SERVO_MOTOR_COUNT 1
+
 typedef struct {
-	int32_t angle;
+	float angle;
 	uint32_t tim_channel;
 } motor_t;
 
 extern motor_t motors[MOTOR_COUNT];
+extern float motor_snapshot[3][MOTOR_COUNT];
+
+extern motor_t* imu_motors[IMU_SERVO_MOTOR_COUNT];
+extern motor_t* joystick_motors[JOYSTICK_SERVO_MOTOR_COUNT];
+extern motor_t* claw_motor;
 
 HAL_StatusTypeDef sg90_set_angle(TIM_HandleTypeDef* htim, const motor_t* motor);
 HAL_StatusTypeDef sg90_init (TIM_HandleTypeDef* htim);
 void sg90_sweep_test (TIM_HandleTypeDef* htim);
+void sg90_set_zero (TIM_HandleTypeDef* htim);
 
 
 #endif /* INC_SG90_H_ */
