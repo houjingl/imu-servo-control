@@ -3,6 +3,8 @@
  *
  *  Created on: Feb 3, 2026
  *      Author: filip
+
+ skeleton code from ECE342 lab4, modified by Demi Zhang Jerry Hou
  */
 
 #ifndef INC_SSD1306_H_

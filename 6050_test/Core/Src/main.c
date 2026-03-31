@@ -25,7 +25,6 @@
 #include <stdio.h>
 #include "mpu6050.h"
 #include <math.h>
-#include "madgwick.h"
 #include "sg90.h"
 #include "ssd1306.h"
 #include "step_motor.h"
